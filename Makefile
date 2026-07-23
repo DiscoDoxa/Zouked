@@ -1,9 +1,14 @@
 # Variables
+
 CC = g++
-CFLAGS = -Wall -g
-SOURCES = main.cpp
-OBJECTS = $(SOURCES:.cpp=.o)
+C = gcc
+SOURCES = $(wildcard *.cpp) #All .cpp files in folder
+#All Warnings, Linking the right librairies and indicating include folder
+CFLAGS = -Wall -g -Iinclude
+LFLAGS = -lglfw3 -lGL -lX11 -lpthread -lXrandr -lXi -ldl -lm
+OBJECTS = $(SOURCES:.cpp=.o) glad.o
 TARGET = Zouked
+
 
 # Règle par défaut
 all: $(TARGET)
@@ -12,27 +17,30 @@ all: $(TARGET)
 # $@ -> $(TARGET)
 # $^ -> $(OBJECTS)
 $(TARGET): $(OBJECTS)
-	echo "Linking $@..."
-    $(CC) -o $@ $^
+	@echo "Linking $@..."
+	$(CC) -o $@ $^ $(LFLAGS) 
+
+# Compilation de glad.c
+
+glad.o: src/glad.c
+	@echo "Compiling $<..."
+	$(C) $(CFLAGS) -c $< -o $@
 
 # Compilation des fichiers .cpp en .o
-# $< -> Premier element des pr
-%.o: %.cpp
-	echo "Compiling $<..."
-    $(CC) $(CFLAGS) -c $< -o $@
 
-# Déclaration des cibles phony
-.PHONY: all clean fclean re
+%.o: %.cpp
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c $< -o $@
 
 # Nettoyage des fichiers objets
 clean:
-	echo "Cleaning object files..."
-    rm -f $(OBJECTS)
+	@echo "Cleaning object files..."
+	rm -f $(OBJECTS)
 
 # Nettoyage complet (fichiers objets et exécutable)
 neat: clean
-	echo "Cleaning executable..."
-    rm -f $(TARGET)
+	@echo "Cleaning executable..."
+	rm -f $(TARGET)
 
 # Refaire la compilation
 re: neat all
