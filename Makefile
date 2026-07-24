@@ -44,3 +44,7 @@ neat: clean
 
 # Refaire la compilation
 re: neat all
+
+# Afficher les informations d'eecution du programme (for debugging)
+map : CFLAGS += -DMAP 
+map : re

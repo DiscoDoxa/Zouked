@@ -1,34 +1,22 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
+#include <chrono>
 #include <iostream>
 
 using namespace std;
+using namespace chrono;
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow *window);
+#include "main.h"
+#include "Shader.h"
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-// shaders (code in GLSL)
-const char *vertexShaderSource = "#version 330 core\n" 
-                                "layout (location = 0) in vec3 aPos;\n" // Input (vec3)
-                                "void main()\n"
-                                "{\n"
-                                "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" // Output (vec4)
-                                "}\0"; // Most simple vertex shader that does nothing
-
-const char *fragmentShaderSource ="#version 330 core\n"
-                                "out vec4 FragColor;\n"
-                                "void main()\n"
-                                "{\n"
-                                "    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-                                "}\0"; //always outputs an orange-ish color
 
 int main()
-{   
+{
+
     // ------------------------------
     // glfw: initialize and configure
     // ------------------------------
@@ -49,7 +37,7 @@ int main()
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Totalement Zouked", NULL, NULL);
     if (window == NULL)
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
+        cout << "Failed to create GLFW window" << endl;
         glfwTerminate();
         return -1;
     }
@@ -63,7 +51,7 @@ int main()
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        std::cout << "Failed to initialize GLAD" << std::endl;
+        cout << "Failed to initialize GLAD" << endl;
         return -1;
     }   
 
@@ -117,51 +105,15 @@ int main()
     // 3. shaders and shader program
     // _____________________________
 
-    unsigned int vertexShader; // Shader #1 : Applies transformation to the vertices
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL); // Apply source (shader, number of strings, strings, NULL)
-    glCompileShader(vertexShader); // Compiles it
+    Shader *shader1 = new Shader("vertexShader1.glsl", "fragmentShader1.frag");
 
-    unsigned int fragmentShader; // Shader #2 : Aplies colors to pixels
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader); // Compiles it
+    // 4. time initialization
+    // ______________________
 
-    // Check shader compiling success  [[[
-
-    char infoLog[512];
-    int  v_success, f_success;
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &v_success);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &f_success);
-    if(!v_success)
-    {   glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << endl;} 
-    if(!f_success)
-    {   glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << endl;} 
-
-    //          ]]]
-
-    unsigned int shaderProgram; // Shader program - final linked version of multiple shaders combined
-    shaderProgram = glCreateProgram(); // Returns the ID of the program
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    // Check shader program linking success    [[[
-
-    int p_success;
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &p_success);
-    if(!p_success) 
-    {   glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        cout << "ERROR::SHADER_PROGRAMM::LINKING_FAILED\n" << infoLog << endl;} 
-
-    ///         ]]]
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader); // no longer nedded
-
-
+    auto start_time = steady_clock::now();
+    auto curr_time = start_time;
+    float playtime_in_second = 0;
+    
     // -----------
     // render loop
     // -----------
@@ -183,7 +135,7 @@ int main()
         
         // use our shader program when we want to render an object
 
-        glUseProgram(shaderProgram); // Activates shader program (from then and on)
+        glUseProgram(shader1->shaderProgram); // Activates shader program (from then and on)
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // or GL_FILL for full triangles
 
         // now draw the object 
@@ -198,6 +150,16 @@ int main()
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        // -----------
+        // update time
+        // -----------
+        
+        curr_time = steady_clock::now();
+        playtime_in_second = duration<float>(curr_time - start_time).count();
+        #ifdef MAP
+            cout << "[RUNNING] - Playtime: " << (int)playtime_in_second << " s" << '\r' << flush;
+        #endif
     }
 
     // ------------------------------------------------------------------
@@ -228,3 +190,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
 }
+
+// --------------------------------------------------------------
+// open the file, read it from start to bottom, return as string
+// --------------------------------------------------------------
+
+
