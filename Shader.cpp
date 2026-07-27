@@ -1,12 +1,14 @@
 #include <iostream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
+#include <glm/glm.hpp>
+#include <tuple>
 #include "Shader.h"
 
 using namespace std;
+using namespace glm;
 
-Shader::Shader(const char * vertex_file_path, const char * fragment_file_path)
+Shader::Shader(const char* vertex_file_path, const char* fragment_file_path)
 {
 	createShaderProgram(vertex_file_path, fragment_file_path);
 }
@@ -21,15 +23,35 @@ Shader::~Shader()
 	glDeleteProgram(shaderProgram);
 }
 
-void Shader::createShaderProgram(const char * vertex_file_path, const char * fragment_file_path)
+unsigned int Shader::getShaderProgram()
 {
+    return shaderProgram;
+}
+
+void Shader::updateAllUniform()
+{
+    for (const auto& [name, updateFn] : uUpdateMap)
+    {
+        updateFn();
+    }
+}
+
+void Shader::createShaderProgram(const char* vertex_file_path, const char* fragment_file_path)
+{
+    #ifdef MAP
+        int nrAttributes;
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
+        cout << "Création du shader program: " << endl; 
+        cout << "Maximum nr of vertex attributes supported: " << nrAttributes << endl;
+    #endif
+
 	// shaders (code in GLSL)
-	const char *vertexShaderSource = readShaderFile(vertex_file_path);
-	const char *fragmentShaderSource = readShaderFile(fragment_file_path);
+	const char* vertexShaderSource = readShaderFile(vertex_file_path);
+	const char* fragmentShaderSource = readShaderFile(fragment_file_path);
 
 	unsigned int vertexShader; // Shader #1 : Applies transformation to the vertices
     vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL); // Apply source (shader, number of strings, strings, NULL)
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL); // Apply source (shader, number of char*s, char*s, NULL)
     glCompileShader(vertexShader); // Compiles it
 
     unsigned int fragmentShader; // Shader #2 : Aplies colors to pixels
@@ -80,7 +102,7 @@ void Shader::createShaderProgram(const char * vertex_file_path, const char * fra
     glDeleteShader(fragmentShader); // no longer nedded
 }
 
-char *Shader::readShaderFile(const char *filepath)
+char* Shader::readShaderFile(const char* filepath)
 {
 	#ifdef MAP
 		cout << "Lecture du fichier: " << filepath << "..." << endl;
@@ -97,7 +119,7 @@ char *Shader::readShaderFile(const char *filepath)
     long length = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    char *buffer = (char *)malloc(length + 1);
+    char* buffer =  (char*)malloc(length + 1);
     if (!buffer)
     {
         fclose(file);

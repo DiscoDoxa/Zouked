@@ -1,2 +1,2 @@
 # Zouked
-(AU/VST) Visualizer Plug-In to make diggers/dancers zouked.
+OpenGL Visualizer Plug-In to make diggers/dancers zouked.

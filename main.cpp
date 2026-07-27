@@ -1,13 +1,17 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <chrono>
+#include <glm/glm.hpp>
 #include <iostream>
 
 using namespace std;
-using namespace chrono;
+using namespace glm;
 
 #include "main.h"
 #include "Shader.h"
+
+// So it passes a pair (address, name) beacause we use the name for indexing
+// (because once it's passed it can't get the name inside the function)
+#define ADD_UNIFORM(shader, var) shader->addUniform(&(var), #var)
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -107,12 +111,14 @@ int main()
 
     Shader *shader1 = new Shader("vertexShader1.glsl", "fragmentShader1.frag");
 
-    // 4. time initialization
-    // ______________________
+    // 4. uniform variables initialization
+    // ___________________________________
 
-    auto start_time = steady_clock::now();
-    auto curr_time = start_time;
-    float playtime_in_second = 0;
+    float playTime = 0;
+    vec4 ourColor = vec4(0.2, 0.4, 0.5, 1.0);
+
+    ADD_UNIFORM(shader1, playTime);
+    ADD_UNIFORM(shader1, ourColor);
     
     // -----------
     // render loop
@@ -135,8 +141,8 @@ int main()
         
         // use our shader program when we want to render an object
 
-        glUseProgram(shader1->shaderProgram); // Activates shader program (from then and on)
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // or GL_FILL for full triangles
+        glUseProgram(shader1->getShaderProgram()); // Activates shader program (from then and on)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // GL_LINE/ GL_FILL for full triangles
 
         // now draw the object 
 
@@ -151,14 +157,15 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
 
-        // -----------
-        // update time
-        // -----------
-        
-        curr_time = steady_clock::now();
-        playtime_in_second = duration<float>(curr_time - start_time).count();
+        // ------------------------
+        // update uniform variables
+        // ------------------------
+
+        playTime = glfwGetTime();
+        shader1->updateAllUniform(); 
+
         #ifdef MAP
-            cout << "[RUNNING] - Playtime: " << (int)playtime_in_second << " s" << '\r' << flush;
+            cout << "[RUNNING] - Playtime: " << (int)playTime << " s" << '\r' << flush;
         #endif
     }
 
