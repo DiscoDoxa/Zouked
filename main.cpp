@@ -16,6 +16,7 @@ using namespace glm;
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+vec2 iResolution = vec2(SCR_WIDTH, SCR_HEIGHT);
 
 
 int main()
@@ -66,11 +67,18 @@ int main()
     // 1. vertices (= sommets)
     // _______________________
 
-    float vertices[] = { // Normalized Device Coordinates (NDC) of a 2D triangle
-        -0.5f, -0.5f, 1.0f, // bottom left
+    float vertices1[] = { // Normalized Device Coordinates (NDC) of a 2D triangle
+        -0.5f, -0.5f, 0.0f, // bottom left
          0.5f, -0.5f, 0.0f, // bottom right
         -0.5f,  0.5f, 0.0f, // top left
          0.5f,  0.5f, 0.0f  // top right 
+    }; // Will be transformed to Screen Space Cordinates (SSC) via the ViewPort transform
+
+    float vertices[] = { // Normalized Device Coordinates (NDC) of a 2D triangle
+        -1.0f, -1.0f, 0.0f, // bottom left
+         1.0f, -1.0f, 0.0f, // bottom right
+        -1.0f,  1.0f, 0.0f, // top left
+         1.0f,  1.0f, 0.0f  // top right 
     }; // Will be transformed to Screen Space Cordinates (SSC) via the ViewPort transform
 
     unsigned int indices[] = {  // note that we start from 0!
@@ -109,20 +117,27 @@ int main()
     // 3. shaders and shader program
     // _____________________________
 
-    Shader *shader1 = new Shader("vertexShader1.glsl", "fragmentShader1.frag");
+    Shader *shader1 = new Shader("/home/user/Bureau/Zouked/Shaders/vertexShader1.glsl", 
+                                "/home/user/Bureau/Zouked/Shaders/Star_Nest.frag");
 
     // 4. uniform variables initialization
     // ___________________________________
 
     float playTime = 0;
-    vec4 ourColor = vec4(0.2, 0.4, 0.5, 1.0);
-
     ADD_UNIFORM(shader1, playTime);
+
+    vec4 ourColor = vec4(0.2, 0.4, 0.5, 1.0);
     ADD_UNIFORM(shader1, ourColor);
+
+    ADD_UNIFORM(shader1, iResolution);
     
     // -----------
     // render loop
     // -----------
+
+    #ifdef MAP
+        cout  << endl << "______________________________________" << endl << endl << endl;
+    #endif
 
     while (!glfwWindowShouldClose(window))
     {
@@ -131,6 +146,18 @@ int main()
         // -----
 
         processInput(window); // Process inputs (crazy right)
+
+        // ------------------------
+        // update uniform variables
+        // ------------------------
+
+        playTime = glfwGetTime();
+        //iResolution = glGet(GL_VIEWPORT)
+        shader1->updateAllUniform(); 
+
+        #ifdef MAP
+            cout << "[RUNNING] - Playtime: " << (int)playTime << " s - WIDTH: " << iResolution.x << "p - HEIGHT: " << iResolution.y << "p" << '\r' << flush;
+        #endif
 
         // ----------------------------------
         // gl: rendering (write into buffers)
@@ -156,23 +183,15 @@ int main()
 
         glfwSwapBuffers(window);
         glfwPollEvents();
-
-        // ------------------------
-        // update uniform variables
-        // ------------------------
-
-        playTime = glfwGetTime();
-        shader1->updateAllUniform(); 
-
-        #ifdef MAP
-            cout << "[RUNNING] - Playtime: " << (int)playTime << " s" << '\r' << flush;
-        #endif
     }
 
     // ------------------------------------------------------------------
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
 
+    #ifdef MAP
+        cout << endl << endl << "______________________________________" << endl << endl;
+    #endif
     glfwTerminate();
     return 0;
 }
@@ -196,6 +215,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+    iResolution = vec2(width, height);
 }
 
 // --------------------------------------------------------------

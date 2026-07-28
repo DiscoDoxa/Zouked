@@ -65,30 +65,34 @@ int Shader::addUniform(const T* uniform_variable,const char* name)
     // chooses which function will be used for update based on type
     uUpdateMap[name] = [location, uniform_variable]()
     {
-        if constexpr (is_same_v<T, float>) // constexpr evaluates during compilation so the function isn't overloaded
-            glUniform1f(location, *uniform_variable);
-        else if constexpr (is_same_v<T, int>)
-            glUniform1i(location, *uniform_variable);
-        else if constexpr (is_same_v<T, unsigned int>)
-            glUniform1ui(location, *uniform_variable);
-        else if constexpr (is_same_v<T, bool>)
-            glUniform1i(location, *uniform_variable ? 1 : 0);
-        else if constexpr (is_same_v<T, vec2>)
-            glUniform2fv(location, 1, value_ptr(*uniform_variable));
-        else if constexpr (is_same_v<T, vec3>)
-            glUniform3fv(location, 1, value_ptr(*uniform_variable));
-        else if constexpr (is_same_v<T, vec4>)
-            glUniform4fv(location, 1, value_ptr(*uniform_variable));
-        else if constexpr (is_same_v<T, mat3>)
-            glUniformMatrix3fv(location, 1, GL_FALSE, value_ptr(*uniform_variable));
-        else if constexpr (is_same_v<T, mat4>)
-            glUniformMatrix4fv(location, 1, GL_FALSE, value_ptr(*uniform_variable));
-        else
-            static_assert(!sizeof(T), "addUniform: unsupported uniform type");
+    	if (location!=-1)
+    	{
+	        if constexpr (is_same_v<T, float>) // constexpr evaluates during compilation so the function isn't overloaded
+	            glUniform1f(location, *uniform_variable);
+	        else if constexpr (is_same_v<T, int>)
+	            glUniform1i(location, *uniform_variable);
+	        else if constexpr (is_same_v<T, unsigned int>)
+	            glUniform1ui(location, *uniform_variable);
+	        else if constexpr (is_same_v<T, bool>)
+	            glUniform1i(location, *uniform_variable ? 1 : 0);
+	        else if constexpr (is_same_v<T, vec2>)
+	            glUniform2fv(location, 1, value_ptr(*uniform_variable));
+	        else if constexpr (is_same_v<T, vec3>)
+	            glUniform3fv(location, 1, value_ptr(*uniform_variable));
+	        else if constexpr (is_same_v<T, vec4>)
+	            glUniform4fv(location, 1, value_ptr(*uniform_variable));
+	        else if constexpr (is_same_v<T, mat3>)
+	            glUniformMatrix3fv(location, 1, GL_FALSE, value_ptr(*uniform_variable));
+	        else if constexpr (is_same_v<T, mat4>)
+	            glUniformMatrix4fv(location, 1, GL_FALSE, value_ptr(*uniform_variable));
+	        else
+	            static_assert(!sizeof(T), "addUniform: unsupported uniform type");
+	     }
     };
 
     #ifdef MAP
-        cout << "Added uVarMap[" << name << "] = " << location << endl;
+    	if(location!=-1) cout << "Added - [" << name << "] at location: [" << location << "]" << endl;
+    	else cout << name << " isn't used" << endl;
     #endif
 
     return location;

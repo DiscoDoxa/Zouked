@@ -30,9 +30,9 @@ unsigned int Shader::getShaderProgram()
 
 void Shader::updateAllUniform()
 {
-    for (const auto& [name, updateFn] : uUpdateMap)
+    for (const auto& [name, update] : uUpdateMap)
     {
-        updateFn();
+        update();
     }
 }
 

@@ -1,5 +1,4 @@
-// Star Nest by Pablo Roman Andrioli
-// License: MIT
+#version 330 core
 
 // IN -----------
 in vec2 fragCoord;
@@ -8,16 +7,9 @@ in vec2 fragCoord;
 out vec4 fragColor;
 
 // UNIFORM --------------
-uniform vec3 iResolution;
-uniform float iTime;
-uniform float iTimeDelta;
-uniform float iFrame;
-uniform float iChannelTime[4];
-uniform vec4 iMouse;
-uniform vec4 iDate;
-uniform float iSampleRate;
-uniform vec3 iChannelResolution[4];
-uniform samplerXX iChanneli;
+uniform vec2 iResolution;
+uniform float playTime;
+
 
 #define iterations 17
 #define formuparam 0.53
@@ -27,7 +19,7 @@ uniform samplerXX iChanneli;
 
 #define zoom   0.800
 #define tile   0.850
-#define speed  0.010 
+#define speed  0.01 
 
 #define brightness 0.0015
 #define darkmatter 0.300
@@ -38,22 +30,14 @@ uniform samplerXX iChanneli;
 void main()
 {
 	//get coords and direction
-	vec2 uv=fragCoord.xy/iResolution.xy-.5;
-	uv.y*=iResolution.y/iResolution.x;
-	vec3 dir=vec3(uv*zoom,1.);
-	float time=iTime*speed+.25;
+	vec2 uv = fragCoord.xy;
+	uv.y *= iResolution.y/iResolution.x;
+	vec3 dir=vec3(uv*zoom,1.0);
+	float time=playTime*speed+.25;
 
-	//mouse rotation
-	float a1=.5+iMouse.x/iResolution.x*2.;
-	float a2=.8+iMouse.y/iResolution.y*2.;
-	mat2 rot1=mat2(cos(a1),sin(a1),-sin(a1),cos(a1));
-	mat2 rot2=mat2(cos(a2),sin(a2),-sin(a2),cos(a2));
-	dir.xz*=rot1;
-	dir.xy*=rot2;
-	vec3 from=vec3(1.,.5,0.5);
+	// as if there was a mouse
+	vec3 from = vec3(0.001, .002, 0.00002); // must exist before line 43 uses it
 	from+=vec3(time*2.,time,-2.);
-	from.xz*=rot1;
-	from.xy*=rot2;
 	
 	//volumetric rendering
 	float s=0.1,fade=1.;
@@ -78,5 +62,4 @@ void main()
 	}
 	v=mix(vec3(length(v)),v,saturation); //color adjust
 	fragColor = vec4(v*.01,1.);	
-	
 }
