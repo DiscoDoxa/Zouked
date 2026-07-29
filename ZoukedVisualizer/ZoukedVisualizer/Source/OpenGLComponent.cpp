@@ -39,6 +39,7 @@ OpenGLComponent::OpenGLComponent(unsigned int width, unsigned int height)
     // Finally - we attach the context to this Component.
     openGLContext.attachTo(*this);
 
+    // VSYNC: openGLContext.setSwapInterval(1);
 }
 
 OpenGLComponent::~OpenGLComponent()
@@ -59,13 +60,8 @@ void OpenGLComponent::paint (juce::Graphics& g)
 
 void OpenGLComponent::resized()
 {
-    // This method is where you should set the bounds of any child
-    // components that your component contains..
-
     WIDTH = getWidth();
     HEIGHT = getHeight();
-    glViewport(0, 0, WIDTH, HEIGHT);
-
 }
 
 void OpenGLComponent::newOpenGLContextCreated()
@@ -144,8 +140,14 @@ void OpenGLComponent::newOpenGLContextCreated()
     char vertexShaderPath[256];
     char fragmentShaderPath[256];
 
-    vertexShader = readFile(concatenate("vertexShader.glsl", shaderFolder, vertexShaderPath));
-    fragmentShader = readFile(concatenate("fragmentShader.glsl", shaderFolder, fragmentShaderPath));
+    char* vertexShaderSource = readFile(concatenate("vertexShader.glsl", shaderFolder, vertexShaderPath));
+    char* fragmentShaderSource = readFile(concatenate("Star_Nest.glsl", shaderFolder, fragmentShaderPath));
+
+    vertexShader = vertexShaderSource;
+    fragmentShader = fragmentShaderSource;
+
+    free(vertexShaderSource);
+    free(fragmentShaderSource);
 
     // Create an instance of OpenGLShaderProgram
     shaderProgram.reset(new OpenGLShaderProgram(openGLContext));
@@ -191,9 +193,11 @@ void OpenGLComponent::renderOpenGL()
 
     playTime = timeTracker.getMillisecondCounterHiRes() * 0.001f - startTime;
     shaderProgram->setUniform("playTime", this->playTime);
+
+    glViewport(0, 0, WIDTH, HEIGHT);
     shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
 
-    cout << "[RUNNING] - Playtime: " << (int)playTime << " s - WIDTH: " << WIDTH << "p - HEIGHT: " << HEIGHT << "p" << '\r' << flush;
+    //cout << "[RUNNING] - Playtime: " << (int)playTime << " s - WIDTH: " << WIDTH << "p - HEIGHT: " << HEIGHT << "p" << '\r' << flush;
     
     // ----------------------------------
     // gl: rendering (write into buffers)
@@ -255,7 +259,11 @@ void OpenGLComponent::renderOpenGL()
 void OpenGLComponent::openGLContextClosing()
 {
     // Release the shader program.
-    shaderProgram.release();
+    shaderProgram.reset(); //not release because dangling pointer issue
+
+    // free the VBO and IBO.
+    openGLContext.extensions.glDeleteBuffers(1, &vbo);
+    openGLContext.extensions.glDeleteBuffers(1, &ibo);
 }
 
 char* OpenGLComponent::readFile(const char* filepath)

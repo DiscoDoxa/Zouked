@@ -27,7 +27,6 @@ ZoukedVisualizerAudioProcessorEditor::ZoukedVisualizerAudioProcessorEditor (Zouk
 
     // for inputs
     setWantsKeyboardFocus(true);
-    grabKeyboardFocus();
     addKeyListener(this);
 }
 
@@ -56,12 +55,10 @@ void ZoukedVisualizerAudioProcessorEditor::resized()
 
 }
 
-// DOES NOT WORK
 bool ZoukedVisualizerAudioProcessorEditor::keyPressed(const KeyPress& key, Component* originatingComponent)
 {
     if (key == KeyPress('f'))
     {
-        DBG("FullScreen toggled");
         if (auto* peer = getPeer())
         {
             peer->setFullScreen(!peer->isFullScreen());
@@ -71,7 +68,6 @@ bool ZoukedVisualizerAudioProcessorEditor::keyPressed(const KeyPress& key, Compo
 
     if (key == KeyPress::escapeKey)
     {
-        DBG("Quit");
         JUCEApplication::getInstance()->systemRequestedQuit();
         return true;
     }

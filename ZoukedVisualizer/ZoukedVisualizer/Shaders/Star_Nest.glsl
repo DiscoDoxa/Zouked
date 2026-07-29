@@ -1,13 +1,14 @@
 #version 330 core
 
 // IN -----------
+in vec4 fragColor;
 in vec2 fragCoord;
 
 // OUT -----------
-out vec4 fragColor;
+out vec4 fragShaded;
 
 // UNIFORM --------------
-uniform vec2 iResolution;
+uniform vec2 resolution;
 uniform float playTime;
 
 
@@ -31,7 +32,7 @@ void main()
 {
 	//get coords and direction
 	vec2 uv = fragCoord.xy;
-	uv.y *= iResolution.y/iResolution.x;
+	uv.y *= resolution.y/resolution.x;
 	vec3 dir=vec3(uv*zoom,1.0);
 	float time=playTime*speed+.25;
 
@@ -61,5 +62,5 @@ void main()
 		s+=stepsize;
 	}
 	v=mix(vec3(length(v)),v,saturation); //color adjust
-	fragColor = vec4(v*.01,1.);	
+	fragShaded = vec4(v*.01, 1.);	
 }
