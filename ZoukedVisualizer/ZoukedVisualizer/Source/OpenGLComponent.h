@@ -20,7 +20,7 @@ using namespace std;
 class OpenGLComponent  : public juce::Component, public OpenGLRenderer
 {
 public:
-    OpenGLComponent(unsigned int width = 800, unsigned int height = 600);
+    OpenGLComponent(unsigned int width, unsigned int height, vector<float>& bufferSpecsRef); /* FIFO AbstractFifo& audioFifoRef, vector<float>& fifoBufferRef); */
     ~OpenGLComponent() override;
 
     void newOpenGLContextCreated() override;
@@ -53,14 +53,27 @@ private:
     String vertexShader;
     String fragmentShader;
 
-    char *readFile(const char *filepath);
-    char *concatenate(const char *filepath, const char *folderpath, char* fullPath);
+    String readFile(const String& filepath);
 
     unique_ptr<OpenGLShaderProgram> shaderProgram;
 
     Time timeTracker;
     float playTime = 0.0f;
     double startTime = 0.0;
+
+    // ===============================================================================
+    vector<float>& bufferSpecs;
+    void updatebufferSpecs();
+  
+    /* FIFO
+    vector<float> samples;
+    AbstractFifo& audioFifo;
+    vector<float>& fifoBuffer;
+    void updateSamples();
+    */
+
+  
+    // ===============================================================================
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OpenGLComponent)
 };

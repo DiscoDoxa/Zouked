@@ -9,6 +9,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+using namespace std;
+
 //==============================================================================
 ZoukedVisualizerAudioProcessor::ZoukedVisualizerAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -22,6 +24,10 @@ ZoukedVisualizerAudioProcessor::ZoukedVisualizerAudioProcessor()
                        )
 #endif
 {
+    /* FIFO 
+    fifoBuffer.resize(fifoSize, 0.0f);
+    */
+   bufferSpecs.resize(5, 0.0f);
 }
 
 ZoukedVisualizerAudioProcessor::~ZoukedVisualizerAudioProcessor()
@@ -156,7 +162,38 @@ void ZoukedVisualizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
 
         // ..do something to the data...
     }
-}
+    int numSamples = buffer.getNumSamples();
+    const float* channelData = buffer.getReadPointer(0); // Only keeping the left channel for visualization
+    const float doubledData[2*numSamples];
+    for(int i = 0; i < 2*numSamples; i++)
+    {i<numSamples ? doubleData[i] = channelData[i] : doubleData[i] = 0;}
+
+    float peak = buffer.getMagnitude(0, numSamples);
+
+    float RMS = buffer.getRMSLevel(0, 0, numSamples);
+
+    fastFourier.performFrequencyOnlyForwardTransform(doubleData, true);
+
+    float firstFreq = highestAmplitudeFreq(doubleData, numSamples);
+    float secondFreq = highestAmplitudeFreq(doubleData, numSamples-1);
+    float thirdFreq = highestAmplitudeFreq(doubleData, numSamples-2);
+
+    bufferSpecs = {peak, RMS, firstFreq, secondFreq, thirdFreq};
+
+    /* FIFO Writing data to the FIFO, to send it to the OpenGL component
+    int start1, size1, start2, size2;
+    audioFifo.prepareToWrite (numSamples, start1, size1, start2, size2);
+ 
+    if (size1 > 0)
+        copy(channelData, channelData + size1, fifoBuffer.begin() + start1);
+ 
+    if (size2 > 0)
+        copy(channelData + size1, channelData + size1 + size2, fifoBuffer.begin() + start2);
+
+    audioFifo.finishedWrite (size1 + size2);
+    */
+
+    }
 
 //==============================================================================
 bool ZoukedVisualizerAudioProcessor::hasEditor() const
@@ -188,4 +225,29 @@ void ZoukedVisualizerAudioProcessor::setStateInformation (const void* data, int 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new ZoukedVisualizerAudioProcessor();
+}
+
+float highestAmplitudeFreq(float* dft, const int dftSamples)
+{
+    int max = 0;
+    int maxindice = 0;
+    float dftbuffer[dftSamples - 1];
+    for(int i = 0; i < dftSamples; i++)
+    {
+        if (dft[i]>max)
+        {
+            max = dft[i];
+            maxindice = i;
+        }
+    }
+    for(int j = 0, k = 0; j < dftSamples-1; j++)
+    {
+        if (j != maxindice)
+        {
+            k++;
+            dftbuffer[j] = dft[k];
+        }
+    }
+    dft = dftbuffer;
+    return max;
 }

@@ -34,7 +34,7 @@ private:
     // access the processor object that created it.
     ZoukedVisualizerAudioProcessor& audioProcessor;
 
-    // Create an instance of the OpenGLComponent.
+    // Create an instance of the OpenGLComponent 
     OpenGLComponent openGLComponent;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ZoukedVisualizerAudioProcessorEditor)

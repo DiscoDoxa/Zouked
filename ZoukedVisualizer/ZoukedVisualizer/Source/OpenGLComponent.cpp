@@ -1,5 +1,8 @@
 /*
-  ==============================================================================
+  ==============================================================================/home/user/Bureau/JUCE examples/same/OpenGLDemo/Source/DemoUtilities.h
+  /home/user/Bureau/JUCE examples/same/OpenGLDemo/Source/Main.cpp
+  /home/user/Bureau/JUCE examples/same/OpenGLDemo/Source/OpenGLDemo.h
+  /home/user/Bureau/JUCE examples/same/OpenGLDemo/Source/WavefrontObjParser.h
 
     OpenGLComponent.cpp
     Created: 28 Jul 2026 9:36:40am
@@ -9,6 +12,7 @@
 */
 
 #include <JuceHeader.h>
+#include <algorithm>
 
 #if defined (JUCE_MAC)
  #include <OpenGL/gl.h>
@@ -19,12 +23,15 @@
 #include "OpenGLComponent.h"
 
 using namespace juce;
+using namespace std;
 using namespace gl;
 
 //==============================================================================
-OpenGLComponent::OpenGLComponent(unsigned int width, unsigned int height)
-    : WIDTH(width), HEIGHT(height)
+OpenGLComponent::OpenGLComponent(unsigned int width, unsigned int height, vector<float>& bufferSpecsRef) /* FIFO AbstractFifo& audioFifoRef, vector<float>& fifoBufferRef) */
+    : WIDTH(width), HEIGHT(height), bufferSpecs(bufferSpecsRef)/*audioFifo(audioFifoRef), fifoBuffer(fifoBufferRef)*/
 {
+    /* FIFO samples.resize(fifoBufferRef.size()); */
+
     // In your constructor, you should add any child components, and
     // initialise any special settings that your component needs.
     // Indicates that no part of this Component is transparent.
@@ -135,19 +142,10 @@ void OpenGLComponent::newOpenGLContextCreated()
     // _____________________________
 
     // Load the vertex shader and fragment shader from files.
-    const char* shaderFolder = "/home/user/Bureau/Zouked/ZoukedVisualizer/ZoukedVisualizer/Shaders/";
+    const String shaderFolder = "/home/user/Bureau/Zouked/ZoukedVisualizer/ZoukedVisualizer/Shaders/";
 
-    char vertexShaderPath[256];
-    char fragmentShaderPath[256];
-
-    char* vertexShaderSource = readFile(concatenate("vertexShader.glsl", shaderFolder, vertexShaderPath));
-    char* fragmentShaderSource = readFile(concatenate("Star_Nest.glsl", shaderFolder, fragmentShaderPath));
-
-    vertexShader = vertexShaderSource;
-    fragmentShader = fragmentShaderSource;
-
-    free(vertexShaderSource);
-    free(fragmentShaderSource);
+    vertexShader = readFile(shaderFolder + "vertexShader.glsl");
+    fragmentShader = readFile(shaderFolder + "Star_Nest.glsl");
 
     // Create an instance of OpenGLShaderProgram
     shaderProgram.reset(new OpenGLShaderProgram(openGLContext));
@@ -179,6 +177,12 @@ void OpenGLComponent::newOpenGLContextCreated()
 
     shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
 
+    shaderProgram->setUniform("peak", bufferSpecs[0]);
+    shaderProgram->setUniform("RMS", bufferSpecs[1]);
+    shaderProgram->setUniform("firstFreq", bufferSpecs[2]);
+    shaderProgram->setUniform("secondFreq", bufferSpecs[3]);
+    shaderProgram->setUniform("thirdFreq", bufferSpecs[4]);
+
 }
 
 void OpenGLComponent::renderOpenGL()
@@ -197,7 +201,15 @@ void OpenGLComponent::renderOpenGL()
     glViewport(0, 0, WIDTH, HEIGHT);
     shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
 
-    //cout << "[RUNNING] - Playtime: " << (int)playTime << " s - WIDTH: " << WIDTH << "p - HEIGHT: " << HEIGHT << "p" << '\r' << flush;
+    updatebufferSpecs();
+    shaderProgram->setUniform("peak", bufferSpecs[0]);
+    shaderProgram->setUniform("RMS", bufferSpecs[1]);
+    shaderProgram->setUniform("firstFreq", bufferSpecs[2]);
+    shaderProgram->setUniform("secondFreq", bufferSpecs[3]);
+    shaderProgram->setUniform("thirdFreq", bufferSpecs[4]);
+    //shaderProgram->setUniform("samples", samples);
+
+    cout << "|> " << (int)playTime << " s - W: " << WIDTH << "p - H: " << HEIGHT << '\r' << flush;
     
     // ----------------------------------
     // gl: rendering (write into buffers)
@@ -266,50 +278,48 @@ void OpenGLComponent::openGLContextClosing()
     openGLContext.extensions.glDeleteBuffers(1, &ibo);
 }
 
-char* OpenGLComponent::readFile(const char* filepath)
+String OpenGLComponent::readFile(const String& filepath)
 {
-	  #ifdef MAP
-		  cout << "Lecture du fichier: " << filepath << "..." << endl;
-	  #endif
-
-    FILE *file = fopen(filepath, "rb");
-    if (!file)
+    File file(filepath);
+    if (!file.existsAsFile())
     {
-        fprintf(stderr, "Failed to open shader file: %s\n", filepath);
-        return NULL;
+        DBG("Failed to open shader file: " << filepath);
+        return {};
     }
 
-    fseek(file, 0, SEEK_END);
-    long length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char* buffer =  (char*)malloc(length + 1);
-    if (!buffer)
-    {
-        fclose(file);
-        return NULL;
-    }
-
-    fread(buffer, 1, length, file);
-    buffer[length] = '\0';
-
-    fclose(file);
-
-    #ifdef MAP
-      cout << "- - - CONTENU de " << filepath << " - - -" << endl;
-      for (int i = 0;i < length ; i++)
-      {
-        cout << buffer[i];
-      }
-      cout << endl << "- - - - - - - - - - - - -" << endl;
-	  #endif
-
-    return buffer;
+    return file.loadFileAsString();
 }
 
-char* OpenGLComponent::concatenate(const char* filepath, const char* folderpath, char* fullPath)
+void OpenGLComponent::updatebufferSpecs()
 {
-  strcpy(fullPath, folderpath);
-  strcat(fullPath, filepath);
-  return fullPath;
+    // bufferSpecs is a reference to the processor's buffer and is kept up-to-date
+    // by the processor; no direct access to audioProcessor is available here.
+    // Ensure buffer has expected size before using it.
+    if (bufferSpecs.size() < 5)
+    {
+        // fill with zeros to avoid shader uniform access issues
+        bufferSpecs.resize(5, 0.0f);
+    }
 }
+
+/* Reading data from the FIFO
+void OpenGLComponent::updateSamples()
+{ 
+    int numReady = audioFifo.getNumReady();
+    if (numReady >= 4096)
+    {
+        int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
+
+        audioFifo.prepareToRead(numReady, start1, size1, start2, size2);
+    
+        if (size1 > 0)
+            copy(fifoBuffer.begin() + start1, fifoBuffer.begin() + start1 + size1, samples.begin());
+    
+        if (size2 > 0)
+            copy(fifoBuffer.begin() + start2, fifoBuffer.begin() + start2 + size2, samples.begin() + size1);
+
+        audioFifo.finishedRead(size1 + size2);
+    }
+}
+    */
+
