@@ -10,10 +10,15 @@ in vec4 fragColor;
 out vec4 fragShaded;
 
 uniform float playTime;
+uniform float peak;
+uniform float RMS;
+uniform float firstFreq;
+uniform float secondFreq;
+uniform float thirdFreq;
 
 void main()
 {
 	// Set the fragment's colour to the attribute passed in by the
 	// vertex shader.
-	fragShaded = sin(playTime)*fragColor;
+	fragShaded = sin(playTime*peak)*fragColor;
 }

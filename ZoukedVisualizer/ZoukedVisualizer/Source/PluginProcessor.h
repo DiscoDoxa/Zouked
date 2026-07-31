@@ -56,7 +56,8 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    vector<float>& getbufferSpecs() { return bufferSpecs; }
+    AbstractFifo& getBufferSpecsFifo() { return bufferSpecsFifo; }
+    vector<float>& getBufferSpecsFifoBuffer() { return bufferSpecsFifoBuffer; }
     // =============================================================================
     /* FIFO
     AbstractFifo& getAudioFifo() { return audioFifo; }
@@ -66,16 +67,20 @@ public:
     
 private:
 
-    vector<float> bufferSpecs;
     juce::dsp::FFT fastFourier { 11 };
-    
+    double sampleRate = 44100.0;
+
     float highestAmplitudeFreq(float* dft, const int dftSamples);
+    array<float, 3> getTopFrequencies(const float* spectrum, int spectrumSize) const;
     // =============================================================================
     /* FIFO
     static constexpr int fifoSize = 4096; 
     vector<float> fifoBuffer; // sized fifoSize, mono (or interleaved if you want stereo)
     AbstractFifo audioFifo { fifoSize }; // creates fifo of size fifoSize for left channel
     */
+    static constexpr int bufferSpecsFifoSize = 5;
+    vector<float> bufferSpecsFifoBuffer;
+    AbstractFifo bufferSpecsFifo { bufferSpecsFifoSize };
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ZoukedVisualizerAudioProcessor)
 };

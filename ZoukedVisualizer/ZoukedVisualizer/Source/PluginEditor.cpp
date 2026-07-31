@@ -15,7 +15,7 @@
 //==============================================================================
 ZoukedVisualizerAudioProcessorEditor::ZoukedVisualizerAudioProcessorEditor (ZoukedVisualizerAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p),
-      openGLComponent(initial_W, initial_H, audioProcessor.getAudioFifo(), audioProcessor.getFifoBuffer())
+      openGLComponent(initial_W, initial_H, audioProcessor.getBufferSpecsFifo(), audioProcessor.getBufferSpecsFifoBuffer())
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.

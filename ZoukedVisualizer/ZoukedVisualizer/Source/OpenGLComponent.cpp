@@ -27,9 +27,10 @@ using namespace std;
 using namespace gl;
 
 //==============================================================================
-OpenGLComponent::OpenGLComponent(unsigned int width, unsigned int height, vector<float>& bufferSpecsRef) /* FIFO AbstractFifo& audioFifoRef, vector<float>& fifoBufferRef) */
-    : WIDTH(width), HEIGHT(height), bufferSpecs(bufferSpecsRef)/*audioFifo(audioFifoRef), fifoBuffer(fifoBufferRef)*/
+OpenGLComponent::OpenGLComponent(unsigned int width, unsigned int height, AbstractFifo& bufferSpecsFifoRef, vector<float>& bufferSpecsFifoBufferRef) /* FIFO AbstractFifo& audioFifoRef, vector<float>& fifoBufferRef) */
+    : WIDTH(width), HEIGHT(height), bufferSpecsFifo(bufferSpecsFifoRef), bufferSpecsFifoBuffer(bufferSpecsFifoBufferRef)
 {
+    bufferSpecs.resize(5, 0.0f);
     /* FIFO samples.resize(fifoBufferRef.size()); */
 
     // In your constructor, you should add any child components, and
@@ -145,7 +146,7 @@ void OpenGLComponent::newOpenGLContextCreated()
     const String shaderFolder = "/home/user/Bureau/Zouked/ZoukedVisualizer/ZoukedVisualizer/Shaders/";
 
     vertexShader = readFile(shaderFolder + "vertexShader.glsl");
-    fragmentShader = readFile(shaderFolder + "Star_Nest.glsl");
+    fragmentShader = readFile(shaderFolder + "fragmentShader.glsl");
 
     // Create an instance of OpenGLShaderProgram
     shaderProgram.reset(new OpenGLShaderProgram(openGLContext));
@@ -209,8 +210,8 @@ void OpenGLComponent::renderOpenGL()
     shaderProgram->setUniform("thirdFreq", bufferSpecs[4]);
     //shaderProgram->setUniform("samples", samples);
 
-    cout << "|> " << (int)playTime << " s - W: " << WIDTH << "p - H: " << HEIGHT << '\r' << flush;
-    
+    //cout << "|> " << (int)playTime << " s - W: " << WIDTH << "p - H: " << HEIGHT << '\r' << flush;
+    //cout << "|> Peak: " << bufferSpecs[0] << " - RMS: " << bufferSpecs[1] << " - Freq1: " << bufferSpecs[2] << " - Freq2: " << bufferSpecs[3] << " - Freq3: " << bufferSpecs[4] << '\r' << flush;
     // ----------------------------------
     // gl: rendering (write into buffers)
     // ----------------------------------
@@ -292,14 +293,27 @@ String OpenGLComponent::readFile(const String& filepath)
 
 void OpenGLComponent::updatebufferSpecs()
 {
-    // bufferSpecs is a reference to the processor's buffer and is kept up-to-date
-    // by the processor; no direct access to audioProcessor is available here.
-    // Ensure buffer has expected size before using it.
-    if (bufferSpecs.size() < 5)
+    const int numReady = bufferSpecsFifo.getNumReady();
+    if (numReady >= 5)
     {
-        // fill with zeros to avoid shader uniform access issues
-        bufferSpecs.resize(5, 0.0f);
+        int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
+        bufferSpecsFifo.prepareToRead (5, start1, size1, start2, size2);
+
+        if (size1 > 0)
+            std::copy (bufferSpecsFifoBuffer.begin() + start1,
+                       bufferSpecsFifoBuffer.begin() + start1 + size1,
+                       bufferSpecs.begin());
+
+        if (size2 > 0)
+            std::copy (bufferSpecsFifoBuffer.begin() + start2,
+                       bufferSpecsFifoBuffer.begin() + start2 + size2,
+                       bufferSpecs.begin() + size1);
+
+        bufferSpecsFifo.finishedRead (size1 + size2);
     }
+
+    if (bufferSpecs.size() < 5)
+        bufferSpecs.resize(5, 0.0f);
 }
 
 /* Reading data from the FIFO

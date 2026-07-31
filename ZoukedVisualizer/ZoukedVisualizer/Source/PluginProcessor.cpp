@@ -27,7 +27,8 @@ ZoukedVisualizerAudioProcessor::ZoukedVisualizerAudioProcessor()
     /* FIFO 
     fifoBuffer.resize(fifoSize, 0.0f);
     */
-   bufferSpecs.resize(5, 0.0f);
+   bufferSpecsFifoBuffer.resize(5, 0.0f);
+   sampleRate = this->getSampleRate();
 }
 
 ZoukedVisualizerAudioProcessor::~ZoukedVisualizerAudioProcessor()
@@ -101,6 +102,7 @@ void ZoukedVisualizerAudioProcessor::prepareToPlay (double sampleRate, int sampl
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+    this->sampleRate = sampleRate;
 }
 
 void ZoukedVisualizerAudioProcessor::releaseResources()
@@ -162,36 +164,34 @@ void ZoukedVisualizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
 
         // ..do something to the data...
     }
-    int numSamples = buffer.getNumSamples();
+    const int numSamples = buffer.getNumSamples();
     const float* channelData = buffer.getReadPointer(0); // Only keeping the left channel for visualization
-    const float doubledData[2*numSamples];
-    for(int i = 0; i < 2*numSamples; i++)
-    {i<numSamples ? doubleData[i] = channelData[i] : doubleData[i] = 0;}
 
-    float peak = buffer.getMagnitude(0, numSamples);
+    const int fftSize = fastFourier.getSize();
+    vector<float> fftData (2 * fftSize, 0.0f);
+    const int samplesToCopy = jmin (numSamples, fftSize);
 
-    float RMS = buffer.getRMSLevel(0, 0, numSamples);
+    fill (fftData.begin(), fftData.end(), 0.0f);
+    copy_n (channelData, samplesToCopy, fftData.begin());
 
-    fastFourier.performFrequencyOnlyForwardTransform(doubleData, true);
+    const float peak = buffer.getMagnitude(0, numSamples);
+    const float RMS = buffer.getRMSLevel(0, 0, numSamples);
 
-    float firstFreq = highestAmplitudeFreq(doubleData, numSamples);
-    float secondFreq = highestAmplitudeFreq(doubleData, numSamples-1);
-    float thirdFreq = highestAmplitudeFreq(doubleData, numSamples-2);
+    fastFourier.performFrequencyOnlyForwardTransform (fftData.data(), true);
 
-    bufferSpecs = {peak, RMS, firstFreq, secondFreq, thirdFreq};
+    const auto dominantFrequencies = getTopFrequencies (fftData.data(), fftSize / 2 + 1);
+    const std::array<float, 5> bufferSpecsSnapshot = { peak, RMS, dominantFrequencies[0], dominantFrequencies[1], dominantFrequencies[2] };
 
-    /* FIFO Writing data to the FIFO, to send it to the OpenGL component
-    int start1, size1, start2, size2;
-    audioFifo.prepareToWrite (numSamples, start1, size1, start2, size2);
- 
+    int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
+    bufferSpecsFifo.prepareToWrite (bufferSpecsFifoSize, start1, size1, start2, size2);
+
     if (size1 > 0)
-        copy(channelData, channelData + size1, fifoBuffer.begin() + start1);
- 
-    if (size2 > 0)
-        copy(channelData + size1, channelData + size1 + size2, fifoBuffer.begin() + start2);
+        std::copy_n (bufferSpecsSnapshot.begin(), size1, bufferSpecsFifoBuffer.begin() + start1);
 
-    audioFifo.finishedWrite (size1 + size2);
-    */
+    if (size2 > 0)
+        std::copy_n (bufferSpecsSnapshot.begin() + size1, size2, bufferSpecsFifoBuffer.begin() + start2);
+
+    bufferSpecsFifo.finishedWrite (size1 + size2);
 
     }
 
@@ -227,27 +227,55 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
     return new ZoukedVisualizerAudioProcessor();
 }
 
-float highestAmplitudeFreq(float* dft, const int dftSamples)
+float ZoukedVisualizerAudioProcessor::highestAmplitudeFreq(float* dft, const int dftSamples)
 {
-    int max = 0;
-    int maxindice = 0;
-    float dftbuffer[dftSamples - 1];
-    for(int i = 0; i < dftSamples; i++)
+    if (dft == nullptr || dftSamples <= 0)
+        return 0.0f;
+
+    int maxIndice = 0;
+    float maxValue = dft[0];
+
+    for (int i = 1; i < dftSamples; ++i)
     {
-        if (dft[i]>max)
+        if (dft[i] > maxValue)
         {
-            max = dft[i];
-            maxindice = i;
+            maxValue = dft[i];
+            maxIndice = i;
         }
     }
-    for(int j = 0, k = 0; j < dftSamples-1; j++)
+
+    return static_cast<float> (maxIndice);
+}
+
+array<float, 3> ZoukedVisualizerAudioProcessor::getTopFrequencies(const float* spectrum, int spectrumSize) const
+{
+    array<float, 3> topValues = {{ 0.0f, 0.0f, 0.0f }};
+    array<int, 3> topIndices = {{ 0, 0, 0 }};
+
+    for (int i = 0; i < spectrumSize; ++i)
     {
-        if (j != maxindice)
+        const float currentValue = spectrum[i];
+
+        for (int j = 0; j < 3; ++j)
         {
-            k++;
-            dftbuffer[j] = dft[k];
+            if (currentValue > topValues[j])
+            {
+                for (int k = 2; k > j; --k)
+                {
+                    topValues[k] = topValues[k - 1];
+                    topIndices[k] = topIndices[k - 1];
+                }
+
+                topValues[j] = currentValue;
+                topIndices[j] = i;
+                break;
+            }
         }
     }
-    dft = dftbuffer;
-    return max;
+
+    const float frequencyStep = static_cast<float> (sampleRate / static_cast<double> (fastFourier.getSize()));
+
+    return {{ topIndices[0] * frequencyStep,
+              topIndices[1] * frequencyStep,
+              topIndices[2] * frequencyStep }};
 }

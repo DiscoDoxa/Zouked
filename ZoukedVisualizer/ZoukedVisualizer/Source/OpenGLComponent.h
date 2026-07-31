@@ -20,7 +20,7 @@ using namespace std;
 class OpenGLComponent  : public juce::Component, public OpenGLRenderer
 {
 public:
-    OpenGLComponent(unsigned int width, unsigned int height, vector<float>& bufferSpecsRef); /* FIFO AbstractFifo& audioFifoRef, vector<float>& fifoBufferRef); */
+    OpenGLComponent(unsigned int width, unsigned int height, AbstractFifo& bufferSpecsFifoRef, vector<float>& bufferSpecsFifoBufferRef); /* FIFO AbstractFifo& audioFifoRef, vector<float>& fifoBufferRef); */
     ~OpenGLComponent() override;
 
     void newOpenGLContextCreated() override;
@@ -62,7 +62,9 @@ private:
     double startTime = 0.0;
 
     // ===============================================================================
-    vector<float>& bufferSpecs;
+    vector<float> bufferSpecs;
+    AbstractFifo& bufferSpecsFifo;
+    vector<float>& bufferSpecsFifoBuffer;
     void updatebufferSpecs();
   
     /* FIFO
