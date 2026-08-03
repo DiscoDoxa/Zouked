@@ -29,6 +29,7 @@ ZoukedVisualizerAudioProcessor::ZoukedVisualizerAudioProcessor()
     */
    bufferSpecsFifoBuffer.resize(5, 0.0f);
    sampleRate = this->getSampleRate();
+   formatManager.registerBasicFormats();
 }
 
 ZoukedVisualizerAudioProcessor::~ZoukedVisualizerAudioProcessor()
@@ -103,6 +104,20 @@ void ZoukedVisualizerAudioProcessor::prepareToPlay (double sampleRate, int sampl
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     this->sampleRate = sampleRate;
+
+    if (wrapperType == wrapperType_Standalone) // Enabled only in standalone mode
+    {
+        File audioFile("/home/user/Musique/Cassius - La Mouche (DJ Falcon Metal Mix) [Official Audio].wav");
+        auto* reader = formatManager.createReaderFor(audioFile);
+
+        if (reader != nullptr)
+        {
+            readerSource.reset(new AudioFormatReaderSource(reader, true));
+            transportSource.setSource(readerSource.get(), 0, nullptr, sampleRate);
+            transportSource.start();
+        }
+        transportSource.prepareToPlay(samplesPerBlock, sampleRate);
+    }
 }
 
 void ZoukedVisualizerAudioProcessor::releaseResources()
@@ -139,6 +154,14 @@ bool ZoukedVisualizerAudioProcessor::isBusesLayoutSupported (const BusesLayout& 
 
 void ZoukedVisualizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    // ==============================================================================
+    if (wrapperType == AudioProcessor::wrapperType_Standalone) // Enabled only in standalone mode
+    {
+        AudioSourceChannelInfo info(&buffer, 0, buffer.getNumSamples());
+        transportSource.getNextAudioBlock(info); // overwrites buffer with file's audio
+    }
+    // ==============================================================================
+
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
@@ -167,6 +190,9 @@ void ZoukedVisualizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     const int numSamples = buffer.getNumSamples();
     const float* channelData = buffer.getReadPointer(0); // Only keeping the left channel for visualization
 
+    float peak, RMS = -1.0f;
+    array<float, 3> dominantFrequencies({ -1.0f, -1.0f, -1.0f });
+
     const int fftSize = fastFourier.getSize();
     vector<float> fftData (2 * fftSize, 0.0f);
     const int samplesToCopy = jmin (numSamples, fftSize);
@@ -174,13 +200,13 @@ void ZoukedVisualizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     fill (fftData.begin(), fftData.end(), 0.0f);
     copy_n (channelData, samplesToCopy, fftData.begin());
 
-    const float peak = buffer.getMagnitude(0, numSamples);
-    const float RMS = buffer.getRMSLevel(0, 0, numSamples);
-
     fastFourier.performFrequencyOnlyForwardTransform (fftData.data(), true);
 
-    const auto dominantFrequencies = getTopFrequencies (fftData.data(), fftSize / 2 + 1);
-    const std::array<float, 5> bufferSpecsSnapshot = { peak, RMS, dominantFrequencies[0], dominantFrequencies[1], dominantFrequencies[2] };
+    dominantFrequencies = getTopFrequencies (fftData.data(), fftSize / 2 + 1);
+    peak = buffer.getMagnitude(0, numSamples);
+    RMS = buffer.getRMSLevel(0, 0, numSamples);
+
+    array<float, 5> bufferSpecsSnapshot = { peak, RMS, dominantFrequencies[0], dominantFrequencies[1], dominantFrequencies[2] };
 
     int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
     bufferSpecsFifo.prepareToWrite (bufferSpecsFifoSize, start1, size1, start2, size2);
@@ -279,3 +305,5 @@ array<float, 3> ZoukedVisualizerAudioProcessor::getTopFrequencies(const float* s
               topIndices[1] * frequencyStep,
               topIndices[2] * frequencyStep }};
 }
+
+// RETURN LOWS, MID AND HIGHS AVG AMPLITUDE INSTEAD

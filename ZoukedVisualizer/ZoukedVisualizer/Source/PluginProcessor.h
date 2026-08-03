@@ -81,6 +81,10 @@ private:
     static constexpr int bufferSpecsFifoSize = 5;
     vector<float> bufferSpecsFifoBuffer;
     AbstractFifo bufferSpecsFifo { bufferSpecsFifoSize };
+    // =============================================================================
+    AudioFormatManager formatManager;
+    unique_ptr<AudioFormatReaderSource> readerSource;
+    AudioTransportSource transportSource;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ZoukedVisualizerAudioProcessor)
 };

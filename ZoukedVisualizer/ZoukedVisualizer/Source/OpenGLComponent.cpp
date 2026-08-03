@@ -211,7 +211,7 @@ void OpenGLComponent::renderOpenGL()
     //shaderProgram->setUniform("samples", samples);
 
     //cout << "|> " << (int)playTime << " s - W: " << WIDTH << "p - H: " << HEIGHT << '\r' << flush;
-    //cout << "|> Peak: " << bufferSpecs[0] << " - RMS: " << bufferSpecs[1] << " - Freq1: " << bufferSpecs[2] << " - Freq2: " << bufferSpecs[3] << " - Freq3: " << bufferSpecs[4] << '\r' << flush;
+    //cout << "|> Peak: " << bufferSpecs[0] << " - RMS: " << bufferSpecs[1] << " - 1: " << (int)bufferSpecs[2] << "Hz - 2: " << (int)bufferSpecs[3] << "Hz - Freq3: " << (int)bufferSpecs[4] << '\r' << flush;
     // ----------------------------------
     // gl: rendering (write into buffers)
     // ----------------------------------
@@ -293,23 +293,31 @@ String OpenGLComponent::readFile(const String& filepath)
 
 void OpenGLComponent::updatebufferSpecs()
 {
+    vector<float> bufferSpecsCache = bufferSpecs;
     const int numReady = bufferSpecsFifo.getNumReady();
-    if (numReady >= 5)
+    if (numReady >= 1)
     {
+        //cout << "test" << endl;
         int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
         bufferSpecsFifo.prepareToRead (5, start1, size1, start2, size2);
 
         if (size1 > 0)
-            std::copy (bufferSpecsFifoBuffer.begin() + start1,
+            copy (bufferSpecsFifoBuffer.begin() + start1,
                        bufferSpecsFifoBuffer.begin() + start1 + size1,
                        bufferSpecs.begin());
 
         if (size2 > 0)
-            std::copy (bufferSpecsFifoBuffer.begin() + start2,
+            copy (bufferSpecsFifoBuffer.begin() + start2,
                        bufferSpecsFifoBuffer.begin() + start2 + size2,
                        bufferSpecs.begin() + size1);
 
         bufferSpecsFifo.finishedRead (size1 + size2);
+    }
+
+    for(int i = 0; i < bufferSpecs.size(); ++i)
+    {
+        if (bufferSpecs[i] == -1.0f)
+            bufferSpecs[i] = bufferSpecsCache[i];
     }
 
     if (bufferSpecs.size() < 5)
