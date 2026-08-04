@@ -10,6 +10,11 @@ out vec4 fragShaded;
 // UNIFORM --------------
 uniform vec2 resolution;
 uniform float playTime;
+uniform float peak;
+uniform float RMS;
+uniform float lowsAmp;
+uniform float midsAmp;
+uniform float highsAmp;
 
 
 #define iterations 17
@@ -21,6 +26,7 @@ uniform float playTime;
 #define zoom   0.800
 #define tile   0.850
 #define speed  0.01 
+#define attenuation 0.005
 
 #define brightness 0.0015
 #define darkmatter 0.300
@@ -34,7 +40,7 @@ void main()
 	vec2 uv = fragCoord.xy;
 	uv.y *= resolution.y/resolution.x;
 	vec3 dir=vec3(uv*zoom,1.0);
-	float time=playTime*speed+.25;
+	float time=(playTime)*(speed);//+midsAmp*attenuation);
 
 	// as if there was a mouse
 	vec3 from = vec3(0.001, .002, 0.00002); // must exist before line 43 uses it
@@ -57,7 +63,10 @@ void main()
 		if (r>6) fade*=1.-dm; // dark matter, don't render near
 		//v+=vec3(dm,dm*.5,0.);
 		v+=fade;
-		v+=vec3(s,s*s,s*s*s*s)*a*brightness*fade; // coloring based on distance
+		float re = lowsAmp*attenuation;
+		float gr = midsAmp*attenuation;
+		float bl = highsAmp*attenuation;
+		v+=vec3(s+re,s*s+gr,s*s*s*s+bl)*a*brightness*fade; // coloring based on distance
 		fade*=distfading; // distance fading
 		s+=stepsize;
 	}

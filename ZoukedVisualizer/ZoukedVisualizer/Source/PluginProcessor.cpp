@@ -190,9 +190,10 @@ void ZoukedVisualizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     const int numSamples = buffer.getNumSamples();
     const float* channelData = buffer.getReadPointer(0); // Only keeping the left channel for visualization
 
-    float peak, RMS = -1.0f;
-    array<float, 3> dominantFrequencies({ -1.0f, -1.0f, -1.0f });
+    float peak = -1.0f, RMS = -1.0f;
+    array<float, 3> bandsAmplitude({ -1.0f, -1.0f, -1.0f });
 
+    // Perform FFT ========================
     const int fftSize = fastFourier.getSize();
     vector<float> fftData (2 * fftSize, 0.0f);
     const int samplesToCopy = jmin (numSamples, fftSize);
@@ -201,12 +202,13 @@ void ZoukedVisualizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     copy_n (channelData, samplesToCopy, fftData.begin());
 
     fastFourier.performFrequencyOnlyForwardTransform (fftData.data(), true);
+    // ======================================
 
-    dominantFrequencies = getTopFrequencies (fftData.data(), fftSize / 2 + 1);
+    bandsAmplitude = getBandsAmplitude (fftData.data(), fftSize / 2 + 1);
     peak = buffer.getMagnitude(0, numSamples);
     RMS = buffer.getRMSLevel(0, 0, numSamples);
 
-    array<float, 5> bufferSpecsSnapshot = { peak, RMS, dominantFrequencies[0], dominantFrequencies[1], dominantFrequencies[2] };
+    array<float, 5> bufferSpecsSnapshot = { peak, RMS, bandsAmplitude[0], bandsAmplitude[1], bandsAmplitude[2] };
 
     int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
     bufferSpecsFifo.prepareToWrite (bufferSpecsFifoSize, start1, size1, start2, size2);
@@ -253,6 +255,7 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
     return new ZoukedVisualizerAudioProcessor();
 }
 
+/*
 float ZoukedVisualizerAudioProcessor::highestAmplitudeFreq(float* dft, const int dftSamples)
 {
     if (dft == nullptr || dftSamples <= 0)
@@ -272,38 +275,41 @@ float ZoukedVisualizerAudioProcessor::highestAmplitudeFreq(float* dft, const int
 
     return static_cast<float> (maxIndice);
 }
+*/
 
-array<float, 3> ZoukedVisualizerAudioProcessor::getTopFrequencies(const float* spectrum, int spectrumSize) const
+array<float, 3> ZoukedVisualizerAudioProcessor::getBandsAmplitude(const float* spectrum, int spectrumSize) const
 {
-    array<float, 3> topValues = {{ 0.0f, 0.0f, 0.0f }};
-    array<int, 3> topIndices = {{ 0, 0, 0 }};
+    const array<int, 2> bandsCut = {{ 200, 2000 }}; // from 20 to 20 000 Hz
+
+    const float frequencyStep = static_cast<float> (sampleRate / static_cast<double> (fastFourier.getSize()));
+
+    float Lmean = 0.0f, Mmean = 0.0f, Hmean = 0.0f;
+    unsigned int lsize = 0, msize =0, hsize = 0;
 
     for (int i = 0; i < spectrumSize; ++i)
     {
         const float currentValue = spectrum[i];
+        const float currentFreq = i*frequencyStep;
 
-        for (int j = 0; j < 3; ++j)
+        if (currentFreq < bandsCut[0]) // LOWS
         {
-            if (currentValue > topValues[j])
-            {
-                for (int k = 2; k > j; --k)
-                {
-                    topValues[k] = topValues[k - 1];
-                    topIndices[k] = topIndices[k - 1];
-                }
-
-                topValues[j] = currentValue;
-                topIndices[j] = i;
-                break;
-            }
+            Lmean += currentValue;
+            lsize++;
+        }
+        else if (currentFreq < bandsCut[1]) // MIDS
+        {
+            Mmean += currentValue;
+            msize++;
+        }
+        else //HIGHS
+        {
+            Hmean += currentValue;
+            hsize++;
         }
     }
-
-    const float frequencyStep = static_cast<float> (sampleRate / static_cast<double> (fastFourier.getSize()));
-
-    return {{ topIndices[0] * frequencyStep,
-              topIndices[1] * frequencyStep,
-              topIndices[2] * frequencyStep }};
+    Lmean = Lmean/lsize;
+    Mmean /= msize; 
+    Hmean /= hsize;
+    
+    return {{Lmean, Mmean, Hmean}};
 }
-
-// RETURN LOWS, MID AND HIGHS AVG AMPLITUDE INSTEAD

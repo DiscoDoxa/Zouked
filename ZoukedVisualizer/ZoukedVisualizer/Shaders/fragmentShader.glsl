@@ -1,29 +1,37 @@
 #version 330 core
-            
-// The value that was output by the vertex shader.
-// This MUST have the exact same name that we used in the vertex shader.
 
-// IN -----------
+// IN ----------------
 in vec4 fragColor;
+in vec2 fragCoord;
 
-// OUT -----------
+// OUT ----------------
 out vec4 fragShaded;
 
+// UNIFORM ------------
+uniform vec2 resolution;
 uniform float playTime;
 uniform float peak;
 uniform float RMS;
-uniform float firstFreq;
-uniform float secondFreq;
-uniform float thirdFreq;
+uniform float lowsAmp;
+uniform float midsAmp;
+uniform float highsAmp;
 
 void main()
 {
-	// Set the fragment's colour to the attribute passed in by the
-	// vertex shader.
-	fragShaded = vec4(0,0,0,1);
-	float n1 = abs(1 - log(firstFreq)/log(20000));
-	float n2 = abs(1 - log(secondFreq)/log(20000));
-	float n3 = abs(1 - log(thirdFreq)/log(20000));
+	float n1 = lowsAmp;
+	float n2 = midsAmp;
+	float n3 = highsAmp;
 	
-	fragShaded = (3*fragShaded + vec4(n1, n2, n3, 1))/4;
+	// From NSC to pixels
+	vec2 uv = fragCoord.xy;
+	uv.y *= resolution.y/resolution.x;
+	
+	if(mod(length(uv)*100,20) <= 2)
+	{
+		fragShaded = vec4(0,1,0,1);
+	}
+	else
+	{
+		fragShaded = vec4(1,1,1,1);
+	}
 }

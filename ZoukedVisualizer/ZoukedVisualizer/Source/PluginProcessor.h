@@ -70,8 +70,9 @@ private:
     juce::dsp::FFT fastFourier { 11 };
     double sampleRate = 44100.0;
 
-    float highestAmplitudeFreq(float* dft, const int dftSamples);
-    array<float, 3> getTopFrequencies(const float* spectrum, int spectrumSize) const;
+    //float highestAmplitudeFreq(float* dft, const int dftSamples);
+    array<float, 3> getBandsAmplitude(const float *spectrum, int spectrumSize) const;
+
     // =============================================================================
     /* FIFO
     static constexpr int fifoSize = 4096; 

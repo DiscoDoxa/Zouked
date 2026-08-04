@@ -180,9 +180,9 @@ void OpenGLComponent::newOpenGLContextCreated()
 
     shaderProgram->setUniform("peak", bufferSpecs[0]);
     shaderProgram->setUniform("RMS", bufferSpecs[1]);
-    shaderProgram->setUniform("firstFreq", bufferSpecs[2]);
-    shaderProgram->setUniform("secondFreq", bufferSpecs[3]);
-    shaderProgram->setUniform("thirdFreq", bufferSpecs[4]);
+    shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
+    shaderProgram->setUniform("midsAmp", bufferSpecs[3]);
+    shaderProgram->setUniform("highsAmp", bufferSpecs[4]);
 
 }
 
@@ -205,13 +205,13 @@ void OpenGLComponent::renderOpenGL()
     updatebufferSpecs();
     shaderProgram->setUniform("peak", bufferSpecs[0]);
     shaderProgram->setUniform("RMS", bufferSpecs[1]);
-    shaderProgram->setUniform("firstFreq", bufferSpecs[2]);
-    shaderProgram->setUniform("secondFreq", bufferSpecs[3]);
-    shaderProgram->setUniform("thirdFreq", bufferSpecs[4]);
+    shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
+    shaderProgram->setUniform("midsAmp", bufferSpecs[3]);
+    shaderProgram->setUniform("highsAmp", bufferSpecs[4]);
     //shaderProgram->setUniform("samples", samples);
 
     //cout << "|> " << (int)playTime << " s - W: " << WIDTH << "p - H: " << HEIGHT << '\r' << flush;
-    //cout << "|> Peak: " << bufferSpecs[0] << " - RMS: " << bufferSpecs[1] << " - 1: " << (int)bufferSpecs[2] << "Hz - 2: " << (int)bufferSpecs[3] << "Hz - Freq3: " << (int)bufferSpecs[4] << '\r' << flush;
+    //cout << "|> Peak: " << bufferSpecs[0] << " - RMS: " << bufferSpecs[1] << " - L: " << bufferSpecs[2] << " - M: " << bufferSpecs[3] << " - H: " << bufferSpecs[4] << '\r' << flush;
     // ----------------------------------
     // gl: rendering (write into buffers)
     // ----------------------------------
