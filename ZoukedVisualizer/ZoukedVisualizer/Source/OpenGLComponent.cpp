@@ -21,6 +21,7 @@
 #endif
 
 #include "OpenGLComponent.h"
+#include <cmath>
 
 using namespace juce;
 using namespace std;
@@ -160,6 +161,24 @@ void OpenGLComponent::newOpenGLContextCreated()
     {
         // No compilation errors - set the shader program to be active
         shaderProgram->use();
+        usable_shader_program = true;
+
+         // 4. uniform variables initialization
+        // ___________________________________
+
+        startTime = timeTracker.getMillisecondCounterHiRes() * 0.001f;
+        shaderProgram->setUniform("playTime", this->playTime);
+        //vec4 ourColor = vec4(0.2, 0.4, 0.5, 1.0);
+        //ADD_UNIFORM(shader1, ourColor);
+
+        shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
+
+        shaderProgram->setUniform("mouvTime", mouvTime);
+        shaderProgram->setUniform("peak", bufferSpecs[0]);
+        shaderProgram->setUniform("RMS", bufferSpecs[1]);
+        shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
+        shaderProgram->setUniform("midsAmp", bufferSpecs[3]);
+        shaderProgram->setUniform("highsAmp", bufferSpecs[4]);
     }
     else
     {
@@ -168,26 +187,12 @@ void OpenGLComponent::newOpenGLContextCreated()
         jassertfalse;
     }
 
-    // 4. uniform variables initialization
-    // ___________________________________
-
-    startTime = timeTracker.getMillisecondCounterHiRes() * 0.001f;
-    shaderProgram->setUniform("playTime", this->playTime);
-    //vec4 ourColor = vec4(0.2, 0.4, 0.5, 1.0);
-    //ADD_UNIFORM(shader1, ourColor);
-
-    shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
-
-    shaderProgram->setUniform("peak", bufferSpecs[0]);
-    shaderProgram->setUniform("RMS", bufferSpecs[1]);
-    shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
-    shaderProgram->setUniform("midsAmp", bufferSpecs[3]);
-    shaderProgram->setUniform("highsAmp", bufferSpecs[4]);
-
 }
 
 void OpenGLComponent::renderOpenGL()
 {
+    if (usable_shader_program)
+    {
     // -----
     // input
     // -----
@@ -203,6 +208,7 @@ void OpenGLComponent::renderOpenGL()
     shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
 
     updatebufferSpecs();
+    shaderProgram->setUniform("mouvTime", mouvTime);
     shaderProgram->setUniform("peak", bufferSpecs[0]);
     shaderProgram->setUniform("RMS", bufferSpecs[1]);
     shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
@@ -267,6 +273,7 @@ void OpenGLComponent::renderOpenGL()
 
     openGLContext.extensions.glDisableVertexAttribArray(0);
     openGLContext.extensions.glDisableVertexAttribArray(1);
+    }
 }
 
 void OpenGLComponent::openGLContextClosing()
@@ -322,6 +329,19 @@ void OpenGLComponent::updatebufferSpecs()
 
     if (bufferSpecs.size() < 5)
         bufferSpecs.resize(5, 0.0f);
+
+    const int mass = 10;
+    const float friction = 0.5;
+    mouvTime = playTime + cbrt(0.0005*bufferSpecs[2]/mass) - friction*(mouvTime-old_mouvTime); // sort of physic logic
+
+    if (mouvTime < old_mouvTime)
+    {
+        mouvTime = old_mouvTime;
+    }
+    else
+    {
+        old_mouvTime = mouvTime;
+    }
 }
 
 /* Reading data from the FIFO

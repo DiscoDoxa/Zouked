@@ -61,6 +61,11 @@ private:
     float playTime = 0.0f;
     double startTime = 0.0;
 
+    float mouvTime = 0.0f; // is named mouvTime but actually its a position reactin to bass input
+    float old_mouvTime = 0.0f;
+    
+    bool usable_shader_program = false;
+
     // ===============================================================================
     vector<float> bufferSpecs;
     AbstractFifo& bufferSpecsFifo;
