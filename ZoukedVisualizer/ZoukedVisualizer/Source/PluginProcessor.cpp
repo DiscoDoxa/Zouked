@@ -107,7 +107,7 @@ void ZoukedVisualizerAudioProcessor::prepareToPlay (double sampleRate, int sampl
 
     if (wrapperType == wrapperType_Standalone) // Enabled only in standalone mode
     {
-        File audioFile("/home/user/Musique/Cassius - La Mouche (DJ Falcon Metal Mix) [Official Audio].wav");
+        File audioFile("/home/user/Musique/Sometimes.wav");
         auto* reader = formatManager.createReaderFor(audioFile);
 
         if (reader != nullptr)

@@ -63,42 +63,39 @@ float point(vec3 p, vec3 c, float e,float R)
 }
 
 // Cube
-float cube(vec3 p, vec3 pos, float e, float R)
+float cube(vec3 p, vec3 pos, float e, float R, vec3 orientation)
 {
-	vec3 b1 = pos + R/2*vec3(1.0,1.0,1.0);
-	vec3 b2 = pos - R/2*vec3(1.0,1.0,1.0);
-	float v = 0.0;
-	
-	bool inBounds = all(greaterThan(p.xyz, b2.xyz)) && all(lessThan(p.xyz, b1.xyz));
-	if (inBounds)
-	{
-		v = falloff(p.x-pos.x, R) + falloff(p.y-pos.y, R) + falloff(p.z-pos.z, R)
-			+ falloff(pos.x-p.x, R) + falloff(pos.y-p.y, R) + falloff(pos.z-p.z, R);
-	}
-	else
-	{
-		v = point(p, pos, e, R);
-	}
-	return v;
+	vec3 or_b = normalize(cross(orientation, pos));
+	vec3 or_c = normalize(cross(orientation, or_b));
+	float dist_or_a = abs(dot(p, orientation)-dot(pos, orientation));
+	float dist_or_b = abs(dot(p, or_b)-dot(pos, or_b));
+	float dist_or_c = abs(dot(p, or_c)-dot(pos, or_c));
+	return min(min(falloff(dist_or_a, R),falloff(dist_or_b, R)),falloff(dist_or_c, R));
 }
-
-// Blending
-// a : field function of left sub-tree
-// b : field function of right sub-tree
-float Blend(float a,float b)
-{
-   return a+b;
-}
-
 
 
 
 float objects(vec3 p)
-{
-
-	vec3 pointpos = vec3(-2.5+sin(playTime)*5, 0.0, 0.0);
-	vec3 cubepos = vec3(2.5, 0.0, 0.0);
-	float v = Blend(point(p, pointpos, 1.0 ,2.0), cube(p, cubepos, 1.0, 2.0));
+{	
+	// object variables
+	float R = 2.0;
+	
+	float pT = playTime/5.;
+	vec3 pointpos1 = vec3(sin(pT)*5*sin(pT/10)*pow(cos(pT), 3),
+							cos(pT)*5,
+							pow(sin(pT), 3)*10)*sin(pT/10);
+	float pointsize = R; //- exp(-6*mod(playTime, 10));
+	
+	vec3 cubepos1 = vec3(2.5, 0.0, 0.0);
+	vec3 cubepos2 = cubepos1 + vec3(R,R,R);
+	
+	vec3 cubdir1 = normalize(rotateX(vec3(1,1,1), mouvTime));
+	vec3 cubdir2 = normalize(rotateY(vec3(1,0,1), mouvTime));
+	
+	// Evaluate potential field
+	float v = point(p, pointpos1, 1.0 , pointsize) + 
+		cube(p, cubepos1, 1.0, R, cubdir1) + 
+		cube(p, cubepos2, 1.0, R, cubdir2);
 	
 	return v - T;
 }
@@ -157,11 +154,11 @@ float Trace(vec3 o, vec3 u, out bool h,out int s)
 vec3 background(vec3 rd)
 {
 
-    vec2 p = vec2(atan(rd.y/rd.z), atan(rd.x/rd.z))*10;
+    vec2 p = vec2(atan(rd.y/rd.z), atan(rd.x/rd.z))*(cos(playTime/50)*19+1);
     float z = 1.;
-    z *= sin(length(p + vec2(5.,0.))) * cos(8.*atanp(p + vec2(5.,0.)));
-    z *= sin(length(p - vec2(5.,5.))) * cos(8.*atanp(p - vec2(5.,5.)));
-    z *= sin(length(p + vec2(0.,5.))) * cos(8.*atanp(p + vec2(0.,5.)));
+    z *= sin(length(p + vec2(sin(playTime/15)*5.,0.))) * cos(8.*atanp(p + vec2(5.,0.)));
+    z *= sin(length(p - vec2(5.,5.))) * cos(8.*atanp(p - vec2(5.,sin(playTime/15)*5.)));
+    z *= sin(length(p + vec2(0.,sin(playTime/15)*5.))) * cos(8.*atanp(p + vec2(0.,5.)));
     if(-0.1 < z && z < 0. || 0.2 < z) return mix(vec3(0.2, 0.1, 0.005), vec3(0.3, 0.2, 0.3), rd.y*1.0+0.25);
     return mix(vec3(0.8, 0.8, 0.9), vec3(0.6, 0.9, 1.0), rd.y*1.0+0.25);
 
@@ -176,21 +173,27 @@ vec3 Shade(vec3 p, vec3 n, vec3 rd)
    // point light
    const vec3 lightPos = vec3(5.0, 5.0, 5.0); // position of the light
    const vec3 lightColor = vec3(1.0, 1.0, 1.0);
-   const vec3 ambientcolor = vec3(0.5,0.5,0.5);
+   const vec3 ambientcolor = vec3(0.9,0.2,0.3);
    const vec3 glowColor = vec3(0.40, 0.80, 1.00);
    
    // light direction
    vec3 l = normalize(lightPos - p);
 
    // Not even Phong shading, use weighted cosine instead for smooth transitions
-   float diff = 0.5*(1.0+dot(n, l));
+   float diff = cos(1-dot(n, l));
    
    float fresnel = pow(1.0 - dot(rd, n), 3);
    
    // we mix ambient and diffuse components with an equal weight
-   vec3 c =  mix(mix(ambientcolor, lightColor, 0), glowColor , fresnel);
+   vec3 c =  mix(mix(ambientcolor, lightColor, diff), glowColor , fresnel);
    return c;
 }
+
+vec3 topShading(vec3 p, vec3 rgb)
+{
+	return rgb;//*mix(rgb, rgb*rgb, fwidth(objects(p)*2))+vec3(0.01,0.02,0.08);
+}
+
 
 void main()
 {
@@ -227,8 +230,9 @@ void main()
       // Shade objects with light
       rgb = Shade(pos, n, rd);
    }
-
-   fragShaded=vec4(rgb, 1.0);
+	
+	rgb = topShading(pos, rgb); // increase contrast and glow
+   fragShaded = vec4(clamp(rgb, 0.0, 1.0),1.0);
 }
 /*
 void main()

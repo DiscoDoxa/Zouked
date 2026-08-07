@@ -9,8 +9,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-#define initial_W 800
-#define initial_H 600
+#define initial_W 2000
+#define initial_H 200
 
 //==============================================================================
 ZoukedVisualizerAudioProcessorEditor::ZoukedVisualizerAudioProcessorEditor (ZoukedVisualizerAudioProcessor& p)
