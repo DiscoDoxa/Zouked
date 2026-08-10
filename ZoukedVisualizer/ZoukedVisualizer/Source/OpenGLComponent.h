@@ -61,8 +61,11 @@ private:
     float playTime = 0.0f;
     double startTime = 0.0;
 
-    float mouvTime = 0.0f; // is named mouvTime but actually its a position reactin to bass input
-    float old_mouvTime = 0.0f;
+    float lowPos = 0.0f; // position reacting to low frequency input
+
+    float midPos = 0.0f; // position reacting to mid frequency input
+
+    float highPos = 0.5f; // position reacting to high frequency input
     
     bool usable_shader_program = false;
 

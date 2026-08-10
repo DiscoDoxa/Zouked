@@ -10,7 +10,9 @@ out vec4 fragShaded;
 // UNIFORM ------------
 uniform vec2 resolution;
 uniform float playTime;
-uniform float mouvTime;
+uniform float lowPos;
+uniform float midPos;
+uniform float highPos;
 uniform float peak;
 uniform float RMS;
 uniform float lowsAmp;
@@ -21,7 +23,7 @@ uniform float highsAmp;
 
 const int Steps = 1000;
 const float Epsilon = 0.05; // Marching epsilon
-const float T=0.5; // treshold "collide with objects when their potential field > T"
+const float T=0.5; // treshold : "collide with objects when their potential field > T"
 
 const float rA=1.0; // Minimum ray marching distance from origin
 const float rB=50.0; // Maximum
@@ -89,8 +91,8 @@ float objects(vec3 p)
 	vec3 cubepos1 = vec3(2.5, 0.0, 0.0);
 	vec3 cubepos2 = cubepos1 + vec3(R,R,R);
 	
-	vec3 cubdir1 = normalize(rotateX(vec3(1,1,1), mouvTime));
-	vec3 cubdir2 = normalize(rotateY(vec3(1,0,1), mouvTime));
+	vec3 cubdir1 = normalize(rotateX(vec3(1,1,1), lowPos));
+	vec3 cubdir2 = normalize(rotateY(vec3(1,0,1), lowPos));
 	
 	// Evaluate potential field
 	float v = point(p, pointpos1, 1.0 , pointsize) + 
@@ -189,9 +191,13 @@ vec3 Shade(vec3 p, vec3 n, vec3 rd)
    return c;
 }
 
-vec3 topShading(vec3 p, vec3 rgb)
+vec4 topShading(vec3 p, vec3 rgb)
 {
-	return rgb;//*mix(rgb, rgb*rgb, fwidth(objects(p)*2))+vec3(0.01,0.02,0.08);
+	return vec4(clamp(
+									vec3(rgb.x+sin(highPos)/10.0,
+									rgb.y+cos(highPos)/15.0,
+									rgb.z+pow(sin(highPos),3)/5.0), 
+					0.0, 1.0),1.0);
 }
 
 
@@ -204,7 +210,7 @@ void main()
    vec3 rd = vec3(asp*pixel.x, pixel.y, -4.0); //POV direction
    vec3 ro = vec3(0.0, 0.0, 15.0); // POV origin
    
-   float a=playTime*0.05;
+   float a=midPos*0.05;
    //rd.z = rd.z+2.0*mouse.y;
    rd = normalize(rd);
    ro = rotateX(rotateZ(rotateY(ro, a*1.1),a*0.9),a);
@@ -231,8 +237,7 @@ void main()
       rgb = Shade(pos, n, rd);
    }
 	
-	rgb = topShading(pos, rgb); // increase contrast and glow
-   fragShaded = vec4(clamp(rgb, 0.0, 1.0),1.0);
+   fragShaded = topShading(pos, rgb); // increase contrast and glow
 }
 /*
 void main()

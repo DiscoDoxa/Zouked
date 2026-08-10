@@ -9,6 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "FFTProcessor.h"
 
 using namespace juce;
 using namespace std;
@@ -67,11 +68,10 @@ public:
     
 private:
 
-    juce::dsp::FFT fastFourier { 11 };
     double sampleRate = 44100.0;
 
-    //float highestAmplitudeFreq(float* dft, const int dftSamples);
-    array<float, 3> getBandsAmplitude(const float *spectrum, int spectrumSize) const;
+    // We need a separate FFTProcessor for each channel.
+    FFTProcessor fourier { sampleRate };
 
     // =============================================================================
     /* FIFO
@@ -79,9 +79,8 @@ private:
     vector<float> fifoBuffer; // sized fifoSize, mono (or interleaved if you want stereo)
     AbstractFifo audioFifo { fifoSize }; // creates fifo of size fifoSize for left channel
     */
-    static constexpr int bufferSpecsFifoSize = 5;
     vector<float> bufferSpecsFifoBuffer;
-    AbstractFifo bufferSpecsFifo { bufferSpecsFifoSize };
+    AbstractFifo bufferSpecsFifo { 6 };
     // =============================================================================
     AudioFormatManager formatManager;
     unique_ptr<AudioFormatReaderSource> readerSource;

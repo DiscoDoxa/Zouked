@@ -4,6 +4,9 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="WeiXGL" name="ZoukedVisualizer">
     <GROUP id="{83A7853B-45E4-8EBA-AF05-5BF35F5F1FA8}" name="Source">
+      <FILE id="Nvgufq" name="FFTProcessor.cpp" compile="1" resource="0"
+            file="Source/FFTProcessor.cpp"/>
+      <FILE id="pMAGlB" name="FFTProcessor.h" compile="0" resource="0" file="Source/FFTProcessor.h"/>
       <FILE id="mqT9qU" name="OpenGLComponent.cpp" compile="1" resource="0"
             file="Source/OpenGLComponent.cpp"/>
       <FILE id="YBRyP3" name="OpenGLComponent.h" compile="0" resource="0"

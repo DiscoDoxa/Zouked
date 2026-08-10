@@ -147,7 +147,7 @@ void OpenGLComponent::newOpenGLContextCreated()
     const String shaderFolder = "/home/user/Bureau/Zouked/ZoukedVisualizer/ZoukedVisualizer/Shaders/";
 
     vertexShader = readFile(shaderFolder + "vertexShader.glsl");
-    fragmentShader = readFile(shaderFolder + "fragmentShader.glsl");
+    fragmentShader = readFile(shaderFolder + "template.glsl");
 
     // Create an instance of OpenGLShaderProgram
     shaderProgram.reset(new OpenGLShaderProgram(openGLContext));
@@ -173,7 +173,9 @@ void OpenGLComponent::newOpenGLContextCreated()
 
         shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
 
-        shaderProgram->setUniform("mouvTime", mouvTime);
+        shaderProgram->setUniform("lowPos", lowPos);
+        shaderProgram->setUniform("midPos", midPos);
+        shaderProgram->setUniform("highPos", highPos);
         shaderProgram->setUniform("peak", bufferSpecs[0]);
         shaderProgram->setUniform("RMS", bufferSpecs[1]);
         shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
@@ -208,7 +210,9 @@ void OpenGLComponent::renderOpenGL()
     shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
 
     updatebufferSpecs();
-    shaderProgram->setUniform("mouvTime", mouvTime);
+    shaderProgram->setUniform("lowPos", lowPos);
+    shaderProgram->setUniform("midPos", midPos);
+    shaderProgram->setUniform("highPos", highPos);
     shaderProgram->setUniform("peak", bufferSpecs[0]);
     shaderProgram->setUniform("RMS", bufferSpecs[1]);
     shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
@@ -309,18 +313,22 @@ void OpenGLComponent::updatebufferSpecs()
         bufferSpecsFifo.prepareToRead (5, start1, size1, start2, size2);
 
         if (size1 > 0)
-            copy (bufferSpecsFifoBuffer.begin() + start1,
-                       bufferSpecsFifoBuffer.begin() + start1 + size1,
-                       bufferSpecs.begin());
+            copy_n (bufferSpecsFifoBuffer.begin() + start1,
+                    size1,
+                    bufferSpecs.begin());
 
         if (size2 > 0)
-            copy (bufferSpecsFifoBuffer.begin() + start2,
-                       bufferSpecsFifoBuffer.begin() + start2 + size2,
-                       bufferSpecs.begin() + size1);
+            copy_n (bufferSpecsFifoBuffer.begin() + start2,
+                    size2,
+                    bufferSpecs.begin() + size1);
 
         bufferSpecsFifo.finishedRead (size1 + size2);
+
+        //cout << "#READ :";
+        //for (int i = 0; i <5; i++ ){cout << bufferSpecs[i] << "- ";} cout << "size1: " << size1 << " size2: " << size2 << endl;
     }
 
+    /*
     for(int i = 0; i < bufferSpecs.size(); ++i)
     {
         if (bufferSpecs[i] == -1.0f)
@@ -329,39 +337,14 @@ void OpenGLComponent::updatebufferSpecs()
 
     if (bufferSpecs.size() < 5)
         bufferSpecs.resize(5, 0.0f);
-
-    const int mass = 10;
-    const float friction = 0.5;
-    mouvTime = playTime + cbrt(0.0005*bufferSpecs[2]/mass) - friction*(mouvTime-old_mouvTime); // sort of physic logic
-
-    if (mouvTime < old_mouvTime)
-    {
-        mouvTime = old_mouvTime;
-    }
-    else
-    {
-        old_mouvTime = mouvTime;
-    }
-}
-
-/* Reading data from the FIFO
-void OpenGLComponent::updateSamples()
-{ 
-    int numReady = audioFifo.getNumReady();
-    if (numReady >= 4096)
-    {
-        int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
-
-        audioFifo.prepareToRead(numReady, start1, size1, start2, size2);
-    
-        if (size1 > 0)
-            copy(fifoBuffer.begin() + start1, fifoBuffer.begin() + start1 + size1, samples.begin());
-    
-        if (size2 > 0)
-            copy(fifoBuffer.begin() + start2, fifoBuffer.begin() + start2 + size2, samples.begin() + size1);
-
-        audioFifo.finishedRead(size1 + size2);
-    }
-}
     */
+    const int mass = 10;
+
+    lowPos += cbrt(0.0005f * bufferSpecs[2] / mass);
+    
+    midPos += cbrt(0.0005f * bufferSpecs[3] / (mass*10.0f)); 
+
+    highPos += cbrt(0.0005f * bufferSpecs[4]/ (mass*100.0f)); 
+}
+
 

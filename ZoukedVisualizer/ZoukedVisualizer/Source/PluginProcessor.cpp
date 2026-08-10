@@ -27,7 +27,7 @@ ZoukedVisualizerAudioProcessor::ZoukedVisualizerAudioProcessor()
     /* FIFO 
     fifoBuffer.resize(fifoSize, 0.0f);
     */
-   bufferSpecsFifoBuffer.resize(5, 0.0f);
+   bufferSpecsFifoBuffer.resize(6, 0.0f);
    sampleRate = this->getSampleRate();
    formatManager.registerBasicFormats();
 }
@@ -105,6 +105,10 @@ void ZoukedVisualizerAudioProcessor::prepareToPlay (double sampleRate, int sampl
     // initialisation that you need..
     this->sampleRate = sampleRate;
 
+    setLatencySamples(fourier.getLatencyInSamples());
+
+    fourier.reset();
+
     if (wrapperType == wrapperType_Standalone) // Enabled only in standalone mode
     {
         File audioFile("/home/user/Musique/Sometimes.wav");
@@ -163,63 +167,61 @@ void ZoukedVisualizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     // ==============================================================================
 
     juce::ScopedNoDenormals noDenormals;
+    bool bypassed = false;
+
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
+    const int numSamples = buffer.getNumSamples();
+    const float* channelData = buffer.getReadPointer(0); // Only keeping the left channel for visualization
+
+    float peak = -1.0f, RMS = -1.0f;
+    array<float, 3> bandsAmplitude({ -1.0f, -1.0f, -1.0f });
+    
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
 
         // ..do something to the data...
     }
-    const int numSamples = buffer.getNumSamples();
-    const float* channelData = buffer.getReadPointer(0); // Only keeping the left channel for visualization
-
-    float peak = -1.0f, RMS = -1.0f;
-    array<float, 3> bandsAmplitude({ -1.0f, -1.0f, -1.0f });
 
     // Perform FFT ========================
-    const int fftSize = fastFourier.getSize();
-    vector<float> fftData (2 * fftSize, 0.0f);
-    const int samplesToCopy = jmin (numSamples, fftSize);
+    for (int index = 0; index < numSamples; ++index) {
+        float sample = channelData[index];
 
-    fill (fftData.begin(), fftData.end(), 0.0f);
-    copy_n (channelData, samplesToCopy, fftData.begin());
+        bandsAmplitude = fourier.processSample(sample, bypassed);
 
-    fastFourier.performFrequencyOnlyForwardTransform (fftData.data(), true);
+        // if we do processing : channelData[index] = sample;
+    }
     // ======================================
 
-    bandsAmplitude = getBandsAmplitude (fftData.data(), fftSize / 2 + 1);
     peak = buffer.getMagnitude(0, numSamples);
     RMS = buffer.getRMSLevel(0, 0, numSamples);
-
+    
     array<float, 5> bufferSpecsSnapshot = { peak, RMS, bandsAmplitude[0], bandsAmplitude[1], bandsAmplitude[2] };
 
+
     int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
-    bufferSpecsFifo.prepareToWrite (bufferSpecsFifoSize, start1, size1, start2, size2);
+    bufferSpecsFifo.prepareToWrite (5, start1, size1, start2, size2);
 
-    if (size1 > 0)
-        std::copy_n (bufferSpecsSnapshot.begin(), size1, bufferSpecsFifoBuffer.begin() + start1);
+    if (size1 + size2 == 5)
+    {
+        if (size1 > 0)
+            copy_n (bufferSpecsSnapshot.begin(), size1, bufferSpecsFifoBuffer.begin() + start1);
 
-    if (size2 > 0)
-        std::copy_n (bufferSpecsSnapshot.begin() + size1, size2, bufferSpecsFifoBuffer.begin() + start2);
-
+        if (size2 > 0)
+            copy_n (bufferSpecsSnapshot.begin() + size1, size2, bufferSpecsFifoBuffer.begin() + start2);
+    
+    //cout << "#WROTE :";
+    //for (int i = 0; i <5; i++ ){cout << bufferSpecsFifoBuffer[i] << "- ";} cout << endl;
+    
+    }
     bufferSpecsFifo.finishedWrite (size1 + size2);
+
+    
 
     }
 
@@ -253,63 +255,4 @@ void ZoukedVisualizerAudioProcessor::setStateInformation (const void* data, int 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new ZoukedVisualizerAudioProcessor();
-}
-
-/*
-float ZoukedVisualizerAudioProcessor::highestAmplitudeFreq(float* dft, const int dftSamples)
-{
-    if (dft == nullptr || dftSamples <= 0)
-        return 0.0f;
-
-    int maxIndice = 0;
-    float maxValue = dft[0];
-
-    for (int i = 1; i < dftSamples; ++i)
-    {
-        if (dft[i] > maxValue)
-        {
-            maxValue = dft[i];
-            maxIndice = i;
-        }
-    }
-
-    return static_cast<float> (maxIndice);
-}
-*/
-
-array<float, 3> ZoukedVisualizerAudioProcessor::getBandsAmplitude(const float* spectrum, int spectrumSize) const
-{
-    const array<int, 2> bandsCut = {{ 200, 2000 }}; // from 20 to 20 000 Hz
-
-    const float frequencyStep = static_cast<float> (sampleRate / static_cast<double> (fastFourier.getSize()));
-
-    float Lmean = 0.0f, Mmean = 0.0f, Hmean = 0.0f;
-    unsigned int lsize = 0, msize =0, hsize = 0;
-
-    for (int i = 0; i < spectrumSize; ++i)
-    {
-        const float currentValue = spectrum[i];
-        const float currentFreq = i*frequencyStep;
-
-        if (currentFreq < bandsCut[0]) // LOWS
-        {
-            Lmean += currentValue;
-            lsize++;
-        }
-        else if (currentFreq < bandsCut[1]) // MIDS
-        {
-            Mmean += currentValue;
-            msize++;
-        }
-        else //HIGHS
-        {
-            Hmean += currentValue;
-            hsize++;
-        }
-    }
-    Lmean = Lmean/lsize;
-    Mmean /= msize; 
-    Hmean /= hsize;
-    
-    return {{Lmean, Mmean, Hmean}};
 }
