@@ -143,57 +143,14 @@ void OpenGLComponent::newOpenGLContextCreated()
     // 3. shaders and shader program
     // _____________________________
 
-    // Load the vertex shader and fragment shader from files.
-    const String shaderFolder = "/home/user/Bureau/Zouked/ZoukedVisualizer/ZoukedVisualizer/Shaders/";
-
-    vertexShader = readFile(shaderFolder + "vertexShader.glsl");
-    fragmentShader = readFile(shaderFolder + "template.glsl");
-
-    // Create an instance of OpenGLShaderProgram
-    shaderProgram.reset(new OpenGLShaderProgram(openGLContext));
-    
-    // Compile and link the shader.
-    // Each of these methods will return false if something goes wrong so we'll
-    // wrap them in an if statement
-    if (shaderProgram->addVertexShader(vertexShader)
-        && shaderProgram->addFragmentShader(fragmentShader)
-        && shaderProgram->link())
-    {
-        // No compilation errors - set the shader program to be active
-        shaderProgram->use();
-        usable_shader_program = true;
-
-         // 4. uniform variables initialization
-        // ___________________________________
-
-        startTime = timeTracker.getMillisecondCounterHiRes() * 0.001f;
-        shaderProgram->setUniform("playTime", this->playTime);
-        //vec4 ourColor = vec4(0.2, 0.4, 0.5, 1.0);
-        //ADD_UNIFORM(shader1, ourColor);
-
-        shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
-
-        shaderProgram->setUniform("lowPos", lowPos);
-        shaderProgram->setUniform("midPos", midPos);
-        shaderProgram->setUniform("highPos", highPos);
-        shaderProgram->setUniform("peak", bufferSpecs[0]);
-        shaderProgram->setUniform("RMS", bufferSpecs[1]);
-        shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
-        shaderProgram->setUniform("midsAmp", bufferSpecs[3]);
-        shaderProgram->setUniform("highsAmp", bufferSpecs[4]);
-    }
-    else
-    {
-        // Oops - something went wrong with our shaders!
-        // Check the output window of your IDE to see what the error might be.
-        jassertfalse;
-    }
+    at_least_one_works = linkShaderPrograms();
+    if(at_least_one_works) setCurrentShader("template");
 
 }
 
 void OpenGLComponent::renderOpenGL()
 {
-    if (usable_shader_program)
+    if (at_least_one_works)
     {
     // -----
     // input
@@ -203,22 +160,9 @@ void OpenGLComponent::renderOpenGL()
     // update uniform variables
     // ------------------------
 
-    playTime = timeTracker.getMillisecondCounterHiRes() * 0.001f - startTime;
-    shaderProgram->setUniform("playTime", this->playTime);
-
     glViewport(0, 0, WIDTH, HEIGHT);
-    shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
-
-    updatebufferSpecs();
-    shaderProgram->setUniform("lowPos", lowPos);
-    shaderProgram->setUniform("midPos", midPos);
-    shaderProgram->setUniform("highPos", highPos);
-    shaderProgram->setUniform("peak", bufferSpecs[0]);
-    shaderProgram->setUniform("RMS", bufferSpecs[1]);
-    shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
-    shaderProgram->setUniform("midsAmp", bufferSpecs[3]);
-    shaderProgram->setUniform("highsAmp", bufferSpecs[4]);
-    //shaderProgram->setUniform("samples", samples);
+    updateAndUseShaderProgram(currentShader);
+    
 
     //cout << "|> " << (int)playTime << " s - W: " << WIDTH << "p - H: " << HEIGHT << '\r' << flush;
     //cout << "|> Peak: " << bufferSpecs[0] << " - RMS: " << bufferSpecs[1] << " - L: " << bufferSpecs[2] << " - M: " << bufferSpecs[3] << " - H: " << bufferSpecs[4] << '\r' << flush;
@@ -230,8 +174,7 @@ void OpenGLComponent::renderOpenGL()
     // Clear the screen by filling it with black.
     OpenGLHelpers::clear(Colours::black);
 
-    // Use the shader program.
-    shaderProgram->use();
+    
 
     // Bind the VBO and IBO.
     openGLContext.extensions.glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -283,7 +226,11 @@ void OpenGLComponent::renderOpenGL()
 void OpenGLComponent::openGLContextClosing()
 {
     // Release the shader program.
-    shaderProgram.reset(); //not release because dangling pointer issue
+    for (auto it = shaderPrograms.begin(); it != shaderPrograms.end(); ++it) 
+    {
+        it->second.reset(); //not release because dangling pointer issue
+    }
+    
 
     // free the VBO and IBO.
     openGLContext.extensions.glDeleteBuffers(1, &vbo);
@@ -328,16 +275,6 @@ void OpenGLComponent::updatebufferSpecs()
         //for (int i = 0; i <5; i++ ){cout << bufferSpecs[i] << "- ";} cout << "size1: " << size1 << " size2: " << size2 << endl;
     }
 
-    /*
-    for(int i = 0; i < bufferSpecs.size(); ++i)
-    {
-        if (bufferSpecs[i] == -1.0f)
-            bufferSpecs[i] = bufferSpecsCache[i];
-    }
-
-    if (bufferSpecs.size() < 5)
-        bufferSpecs.resize(5, 0.0f);
-    */
     const int mass = 10;
 
     lowPos += cbrt(0.0005f * bufferSpecs[2] / mass);
@@ -347,4 +284,109 @@ void OpenGLComponent::updatebufferSpecs()
     highPos += cbrt(0.0005f * bufferSpecs[4]/ (mass*100.0f)); 
 }
 
+bool OpenGLComponent::linkShaderPrograms()
+{
+    bool at_least_one_shaderProgram_works = false;
 
+    for (int s = 0; s < numShaders; s++)
+    {
+        unique_ptr<OpenGLShaderProgram> shaderProgram;
+        String name = shaderNames[s];
+        cout << "Linking " << name << "... ";
+        bool success = linkShaderProgram(shaderProgram, name);
+        if (success)
+        {
+            // tries to insert it, move because it is a unique_ptr
+            shaderPrograms.try_emplace(name, move(shaderProgram));
+            cout << " with success." << endl;
+            at_least_one_shaderProgram_works = true;
+        }
+        else cout << " failed." << endl;
+    }
+
+    return at_least_one_shaderProgram_works;
+}
+
+bool OpenGLComponent::linkShaderProgram(unique_ptr<OpenGLShaderProgram>& shaderProgram, const String& shaderName)
+{
+    String vertexShader = readFile(shaderFolder + "vertexShader.glsl"); // always the same vertex Shader;
+    String fragmentShader = readFile(shaderFolder + shaderName + ".glsl");
+
+    // Create an instance of OpenGLShaderProgram
+    shaderProgram = make_unique<OpenGLShaderProgram>(openGLContext);
+    
+    // Compile and link the shader.
+    // Each of these methods will return false if something goes wrong so we'll
+    // wrap them in an if statement
+    if (shaderProgram->addVertexShader(vertexShader)
+        && shaderProgram->addFragmentShader(fragmentShader)
+        && shaderProgram->link())
+    {
+        // No compilation errors - set the shader program to be active
+        shaderProgram->use();
+
+         // 4. uniform variables initialization
+        // ___________________________________
+
+        startTime = timeTracker.getMillisecondCounterHiRes() * 0.001f;
+        shaderProgram->setUniform("playTime", this->playTime);
+        shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
+        shaderProgram->setUniform("lowPos", lowPos);
+        shaderProgram->setUniform("midPos", midPos);
+        shaderProgram->setUniform("highPos", highPos);
+        shaderProgram->setUniform("peak", bufferSpecs[0]);
+        shaderProgram->setUniform("RMS", bufferSpecs[1]);
+        shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
+        shaderProgram->setUniform("midsAmp", bufferSpecs[3]);
+        shaderProgram->setUniform("highsAmp", bufferSpecs[4]);
+
+        return true;
+    }
+    else
+    {
+        // Oops - something went wrong with our shaders!
+        // Check the output window of your IDE to see what the error might be.
+        jassertfalse;
+
+        shaderProgram.reset();
+        return false;
+    }
+}
+
+void OpenGLComponent::updateAndUseShaderProgram(OpenGLShaderProgram* shaderProgram)
+{
+    // Use the shader program.
+    if (shaderProgram == nullptr) return;
+    shaderProgram->use();
+
+    playTime = timeTracker.getMillisecondCounterHiRes() * 0.001f - startTime;
+    shaderProgram->setUniform("playTime", this->playTime);
+
+    shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
+
+    updatebufferSpecs();
+    shaderProgram->setUniform("lowPos", lowPos);
+    shaderProgram->setUniform("midPos", midPos);
+    shaderProgram->setUniform("highPos", highPos);
+    shaderProgram->setUniform("peak", bufferSpecs[0]);
+    shaderProgram->setUniform("RMS", bufferSpecs[1]);
+    shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
+    shaderProgram->setUniform("midsAmp", bufferSpecs[3]);
+    shaderProgram->setUniform("highsAmp", bufferSpecs[4]);
+}
+
+bool OpenGLComponent::setCurrentShader(String shaderName)
+{
+    const auto it = shaderPrograms.find(shaderName);
+    // .find() rather than [] to make sure no default value is created
+     
+    if (it == shaderPrograms.end())
+    {
+        cout << "Not assigned." << endl;
+        return false;
+    }
+
+    cout << "Using " << shaderName << "." << endl;
+    currentShader = it->second.get();
+    return true;
+}

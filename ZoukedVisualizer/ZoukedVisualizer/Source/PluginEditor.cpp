@@ -73,5 +73,15 @@ bool ZoukedVisualizerAudioProcessorEditor::keyPressed(const KeyPress& key, Compo
         return true;
     }
 
+    for(int i=0; i < openGLComponent.numShaders; i++)
+    {
+        String name = openGLComponent.shaderNames[i];
+        if (key == KeyPress(name[0]))
+        {
+            openGLComponent.setCurrentShader(name);
+            return true;
+        }
+    }
+
     return false;
 }

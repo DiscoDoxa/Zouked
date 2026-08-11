@@ -33,6 +33,10 @@ public:
     unsigned int WIDTH;
     unsigned int HEIGHT;
 
+    bool setCurrentShader(String shaderName);
+    static const int numShaders = 3;
+    String shaderNames[numShaders] = {"template", "zoukubes", "starnest"};
+
 private:
 
     // Create an OpenGLContext for this Component.
@@ -55,10 +59,16 @@ private:
 
     String readFile(const String& filepath);
 
-    unique_ptr<OpenGLShaderProgram> shaderProgram;
+    const String shaderFolder = "/home/user/Bureau/Zouked/ZoukedVisualizer/ZoukedVisualizer/Shaders/";
+    map<String, unique_ptr<OpenGLShaderProgram>> shaderPrograms;
+    bool linkShaderPrograms();
+    bool linkShaderProgram(unique_ptr<OpenGLShaderProgram>& shaderProgram, const String& shaderName);
+    void updateAndUseShaderProgram(OpenGLShaderProgram* shaderProgram);
+
+    OpenGLShaderProgram* currentShader;
 
     Time timeTracker;
-    float playTime = 0.0f;
+    float playTime = 0.0f; // in seconds
     double startTime = 0.0;
 
     float lowPos = 0.0f; // position reacting to low frequency input
@@ -67,7 +77,7 @@ private:
 
     float highPos = 0.5f; // position reacting to high frequency input
     
-    bool usable_shader_program = false;
+    bool at_least_one_works = false;
 
     // ===============================================================================
     vector<float> bufferSpecs;
