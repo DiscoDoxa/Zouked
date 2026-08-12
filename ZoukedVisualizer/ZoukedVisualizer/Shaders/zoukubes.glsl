@@ -18,6 +18,7 @@ uniform float RMS;
 uniform float lowsAmp;
 uniform float midsAmp;
 uniform float highsAmp;
+uniform int state;
 
 #define attenuation 0.05
 
@@ -28,9 +29,20 @@ const float T=0.5; // treshold : "collide with objects when their potential fiel
 const float rA=1.0; // Minimum ray marching distance from origin
 const float rB=50.0; // Maximum
 
+
+const vec3 lightPos = vec3(5.0, 5.0, 5.0);
+
+//									when state==1 							when state€(2,3)
+vec3 lightColor = 			mix(vec3(0.1020, 0.0980, 0.3255), vec3(0.6353, 0.0675, 0.9255), float(state==1));
+vec3 ambientcolor = 		mix(vec3(0.3686, 0.1412, 0.3059), vec3(0.0118, 0.0235, 0.2157), float(state==1));
+vec3 glowColor = 			mix(vec3(1.0000, 0.5216, 0.7333), vec3(0.5686, 0.0392, 0.4039), float(state==1));
+vec3 bgColorLight = 		mix(vec3(0.0078, 0.1020, 0.3294), vec3(0.5490, 0.0000, 0.0000), float(state==1));
+vec3 bgColorDark = 		mix(vec3(0.0314, 0.0235, 0.0863), vec3(0.7569, 0.2000, 0.5137), float(state==1));
+
+
 float atanp(in vec2 p) { return atan(p.y,p.x); }
 float cube_root(float x) { return sign(x) * pow(abs(x), 1./3.); }
-float sq(float x) { return x*x; }
+float cube(float x) { return x*x*x; }
 
 // Rotates around the Y axis
 vec3 rotateY(vec3 p, float a) {mat3 rota = mat3(cos(a),0,-sin(a),0,1,0,sin(a),0,cos(a));return rota*p;}
@@ -74,9 +86,9 @@ float cube(vec3 p, vec3 pos, float e, float R, vec3 orientation)
 	float dist_or_c = abs(dot(p, or_c)-dot(pos, or_c));
 	return min(min(falloff(dist_or_a, R),falloff(dist_or_b, R)),falloff(dist_or_c, R));
 }
-
-
-
+ 
+ 
+ 
 float objects(vec3 p)
 {	
 	// object variables
@@ -89,7 +101,7 @@ float objects(vec3 p)
 	float pointsize = R; //- exp(-6*mod(playTime, 10));
 	
 	vec3 cubepos1 = vec3(2.5, 0.0, 0.0);
-	vec3 cubepos2 = cubepos1 + vec3(R,R,R);
+	vec3 cubepos2 = vec3(R+sin(pT/2),R+sin(pT/5),R+sin(pT/10)*4);
 	
 	vec3 cubdir1 = normalize(rotateX(vec3(1,1,1), lowPos));
 	vec3 cubdir2 = normalize(rotateY(vec3(1,0,1), lowPos));
@@ -130,7 +142,6 @@ float Trace(vec3 o, vec3 u, out bool h,out int s)
 
    for(int i=0; i<Steps; i++)
    {
-      s=i;
       vec3 p = o+t*u;
       float v = objects(p);
       // Hit objects (1) 
@@ -161,8 +172,8 @@ vec3 background(vec3 rd)
     z *= sin(length(p + vec2(sin(playTime/15)*5.,0.))) * cos(8.*atanp(p + vec2(5.,0.)));
     z *= sin(length(p - vec2(5.,5.))) * cos(8.*atanp(p - vec2(5.,sin(playTime/15)*5.)));
     z *= sin(length(p + vec2(0.,sin(playTime/15)*5.))) * cos(8.*atanp(p + vec2(0.,5.)));
-    if(-0.1 < z && z < 0. || 0.2 < z) return mix(vec3(0.2, 0.1, 0.005), vec3(0.3, 0.2, 0.3), rd.y*1.0+0.25);
-    return mix(vec3(0.8, 0.8, 0.9), vec3(0.6, 0.9, 1.0), rd.y*1.0+0.25);
+    if(-0.1 < z && z < 0. || 0.2 < z) return mix(bgColorDark, vec3(0,0,0), rd.y+0.25);
+    return mix(bgColorLight, glowColor, 0.20);
 
 
 }
@@ -172,11 +183,6 @@ vec3 background(vec3 rd)
 // n : normal at point
 vec3 Shade(vec3 p, vec3 n, vec3 rd)
 {
-   // point light
-   const vec3 lightPos = vec3(5.0, 5.0, 5.0); // position of the light
-   const vec3 lightColor = vec3(1.0, 1.0, 1.0);
-   const vec3 ambientcolor = vec3(0.9,0.2,0.3);
-   const vec3 glowColor = vec3(0.40, 0.80, 1.00);
    
    // light direction
    vec3 l = normalize(lightPos - p);
@@ -184,7 +190,7 @@ vec3 Shade(vec3 p, vec3 n, vec3 rd)
    // Not even Phong shading, use weighted cosine instead for smooth transitions
    float diff = cos(1-dot(n, l));
    
-   float fresnel = pow(1.0 - dot(rd, n), 3);
+   float fresnel = cube(1.0 - dot(rd, n));
    
    // we mix ambient and diffuse components with an equal weight
    vec3 c =  mix(mix(ambientcolor, lightColor, diff), glowColor , fresnel);
@@ -193,21 +199,35 @@ vec3 Shade(vec3 p, vec3 n, vec3 rd)
 
 vec4 topShading(vec3 p, vec3 rgb)
 {
-	return vec4(clamp(
-									vec3(rgb.x+sin(highPos)/10.0,
-									rgb.y+cos(highPos)/15.0,
-									rgb.z+pow(sin(highPos),3)/5.0), 
-					0.0, 1.0),1.0);
+	vec3 color;
+	float lum = .4;
+	if (state==0)
+	{
+		color = vec3(clamp(
+										pow((rgb+lum), vec3(6)),
+								0.0, 1.0));
+	}
+	else
+	{
+		color = vec3(clamp(
+										vec3(rgb.x+sin(highPos)/10.0,
+										rgb.y+cos(highPos)/15.0,
+										rgb.z+cube(sin(highPos))/5.0), 
+								0.0, 1.0));
+	}
+	
+	if (length(color)>lum) color += glowColor*cube(RMS)/10.;
+	return vec4(color, 1.);
 }
 
 
 void main()
 {
-   vec2 pixel = fragCoord.xy;//(fragCoord.xy / resolution.xy)*2.0-1.0;
+   vec2 uv = fragCoord.xy;
 
    // compute ray origin and direction
    float asp = resolution.x / resolution.y;
-   vec3 rd = vec3(asp*pixel.x, pixel.y, -4.0); //POV direction
+   vec3 rd = vec3(asp*uv.x, uv.y, -4.0); //POV direction
    vec3 ro = vec3(0.0, 0.0, 15.0); // POV origin
    
    float a=midPos*0.05;
@@ -237,26 +257,5 @@ void main()
       rgb = Shade(pos, n, rd);
    }
 	
-   fragShaded = topShading(pos, rgb); // increase contrast and glow
+   fragShaded = topShading(pos, rgb);
 }
-/*
-void main()
-{
-	float n1 = lowsAmp;
-	float n2 = midsAmp;
-	float n3 = highsAmp;
-	
-	// From NSC to pixels
-	vec2 uv = fragCoord.xy;
-	uv.y *= resolution.y/resolution.x;
-	
-	if(mod(length(uv)*100,playTime) <= 2)
-	{
-		fragShaded = vec4(0,1,0,1);
-	}
-	else
-	{
-		fragShaded = vec4(1,1,1,1);
-	}
-}
-*/

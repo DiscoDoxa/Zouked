@@ -37,6 +37,8 @@ public:
     static const int numShaders = 3;
     String shaderNames[numShaders] = {"template", "zoukubes", "starnest"};
 
+    void toggleState();
+
 private:
 
     // Create an OpenGLContext for this Component.
@@ -69,6 +71,7 @@ private:
 
     Time timeTracker;
     float playTime = 0.0f; // in seconds
+    float lastTime = 0.0f;
     double startTime = 0.0;
 
     float lowPos = 0.0f; // position reacting to low frequency input
@@ -76,6 +79,8 @@ private:
     float midPos = 0.0f; // position reacting to mid frequency input
 
     float highPos = 0.5f; // position reacting to high frequency input
+
+    int state = 1; // every shader has 3 states (0, 1 and 2)
     
     bool at_least_one_works = false;
 
@@ -84,14 +89,6 @@ private:
     AbstractFifo& bufferSpecsFifo;
     vector<float>& bufferSpecsFifoBuffer;
     void updatebufferSpecs();
-  
-    /* FIFO
-    vector<float> samples;
-    AbstractFifo& audioFifo;
-    vector<float>& fifoBuffer;
-    void updateSamples();
-    */
-
   
     // ===============================================================================
 

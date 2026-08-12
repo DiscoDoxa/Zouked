@@ -18,6 +18,7 @@ uniform float RMS;
 uniform float lowsAmp;
 uniform float midsAmp;
 uniform float highsAmp;
+uniform int  state;
 
 void main()
 {

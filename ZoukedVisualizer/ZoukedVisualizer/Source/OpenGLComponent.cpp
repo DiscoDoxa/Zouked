@@ -144,7 +144,7 @@ void OpenGLComponent::newOpenGLContextCreated()
     // _____________________________
 
     at_least_one_works = linkShaderPrograms();
-    if(at_least_one_works) setCurrentShader("template");
+    if(at_least_one_works) setCurrentShader("zoukubes");
 
 }
 
@@ -275,13 +275,15 @@ void OpenGLComponent::updatebufferSpecs()
         //for (int i = 0; i <5; i++ ){cout << bufferSpecs[i] << "- ";} cout << "size1: " << size1 << " size2: " << size2 << endl;
     }
 
-    const int mass = 10;
 
-    lowPos += cbrt(0.0005f * bufferSpecs[2] / mass);
+    float deltaTime = playTime-lastTime;
+    lastTime = playTime;
+
+    lowPos += cbrt(0.1f * bufferSpecs[2])*deltaTime;
     
-    midPos += cbrt(0.0005f * bufferSpecs[3] / (mass*10.0f)); 
+    midPos += cbrt(0.01f * bufferSpecs[3])*deltaTime;
 
-    highPos += cbrt(0.0005f * bufferSpecs[4]/ (mass*100.0f)); 
+    highPos += cbrt(0.001f * bufferSpecs[4])*deltaTime; 
 }
 
 bool OpenGLComponent::linkShaderPrograms()
@@ -339,6 +341,7 @@ bool OpenGLComponent::linkShaderProgram(unique_ptr<OpenGLShaderProgram>& shaderP
         shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
         shaderProgram->setUniform("midsAmp", bufferSpecs[3]);
         shaderProgram->setUniform("highsAmp", bufferSpecs[4]);
+        shaderProgram->setUniform("state", state);
 
         return true;
     }
@@ -360,11 +363,10 @@ void OpenGLComponent::updateAndUseShaderProgram(OpenGLShaderProgram* shaderProgr
     shaderProgram->use();
 
     playTime = timeTracker.getMillisecondCounterHiRes() * 0.001f - startTime;
-    shaderProgram->setUniform("playTime", this->playTime);
-
-    shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
-
     updatebufferSpecs();
+
+    shaderProgram->setUniform("playTime", this->playTime);
+    shaderProgram->setUniform("resolution", WIDTH, HEIGHT);
     shaderProgram->setUniform("lowPos", lowPos);
     shaderProgram->setUniform("midPos", midPos);
     shaderProgram->setUniform("highPos", highPos);
@@ -373,20 +375,30 @@ void OpenGLComponent::updateAndUseShaderProgram(OpenGLShaderProgram* shaderProgr
     shaderProgram->setUniform("lowsAmp", bufferSpecs[2]);
     shaderProgram->setUniform("midsAmp", bufferSpecs[3]);
     shaderProgram->setUniform("highsAmp", bufferSpecs[4]);
+    shaderProgram->setUniform("state", state);
 }
 
 bool OpenGLComponent::setCurrentShader(String shaderName)
 {
-    const auto it = shaderPrograms.find(shaderName);
+    auto it = shaderPrograms.find(shaderName);
     // .find() rather than [] to make sure no default value is created
      
     if (it == shaderPrograms.end())
     {
-        cout << "Not assigned." << endl;
-        return false;
+        cout << shaderName << " unavailable." << endl;
+        // if not found try to use the first one instead
+        if (shaderPrograms.empty())
+            return false;
+        it = shaderPrograms.begin(); 
+        shaderName = it->first;
     }
 
     cout << "Using " << shaderName << "." << endl;
     currentShader = it->second.get();
     return true;
+}
+
+void OpenGLComponent::toggleState()
+{
+    state = (state + 1)%3; // Circular rotation
 }

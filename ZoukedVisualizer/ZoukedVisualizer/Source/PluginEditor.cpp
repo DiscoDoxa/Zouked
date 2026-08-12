@@ -29,6 +29,7 @@ ZoukedVisualizerAudioProcessorEditor::ZoukedVisualizerAudioProcessorEditor (Zouk
     // for inputs
     setWantsKeyboardFocus(true);
     addKeyListener(this);
+    printInstructions();
 }
 
 ZoukedVisualizerAudioProcessorEditor::~ZoukedVisualizerAudioProcessorEditor()
@@ -73,15 +74,35 @@ bool ZoukedVisualizerAudioProcessorEditor::keyPressed(const KeyPress& key, Compo
         return true;
     }
 
+    if (key == KeyPress::tabKey)
+    {
+        openGLComponent.toggleState();
+        return true;
+    }
+
     for(int i=0; i < openGLComponent.numShaders; i++)
     {
         String name = openGLComponent.shaderNames[i];
         if (key == KeyPress(name[0]))
         {
-            openGLComponent.setCurrentShader(name);
+            if(!openGLComponent.setCurrentShader(name))JUCEApplication::getInstance()->systemRequestedQuit();
             return true;
         }
     }
 
     return false;
+}
+
+void ZoukedVisualizerAudioProcessorEditor::printInstructions()
+{
+    cout << "'f' - full screen" << endl;
+    cout << "'esc' - quit" << endl;
+    cout << "'tab' - toggle shader state" << endl;
+    for(int i=0; i < openGLComponent.numShaders; i++)
+    {
+        String name = openGLComponent.shaderNames[i];
+        char firstLetter = name[0];
+        cout << "'" << firstLetter << "' - " << name << " shader" << endl;
+    }
+
 }
