@@ -59,9 +59,8 @@ private:
     String vertexShader;
     String fragmentShader;
 
-    String readFile(const String& filepath);
+    String readShaderFile(const String shaderName);
 
-    const String shaderFolder = "/home/user/Bureau/Zouked/ZoukedVisualizer/ZoukedVisualizer/Shaders/";
     map<String, unique_ptr<OpenGLShaderProgram>> shaderPrograms;
     bool linkShaderPrograms();
     bool linkShaderProgram(unique_ptr<OpenGLShaderProgram>& shaderProgram, const String& shaderName);

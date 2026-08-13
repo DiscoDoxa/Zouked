@@ -34,11 +34,6 @@
 *.a
 *.lib
 
-# Executables
-*.exe
-*.out
-*.app
-
 # Build directories
 build/
 Build/

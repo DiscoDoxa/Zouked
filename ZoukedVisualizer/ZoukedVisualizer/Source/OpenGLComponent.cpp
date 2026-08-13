@@ -237,12 +237,22 @@ void OpenGLComponent::openGLContextClosing()
     openGLContext.extensions.glDeleteBuffers(1, &ibo);
 }
 
-String OpenGLComponent::readFile(const String& filepath)
+String OpenGLComponent::readShaderFile(const String shaderName)
 {
-    File file(filepath);
+    // resolve shaderFolder robustly (may be made more robust)
+    auto exeFile = File::getSpecialLocation(File::currentExecutableFile);
+    File Dir = exeFile.exists() ? exeFile.getParentDirectory() : File::getCurrentWorkingDirectory();
+
+    while (Dir.getFileName() != "ZoukedVisualizer")
+    {
+        Dir = Dir.getParentDirectory();
+    }
+
+    File file = Dir.getChildFile("./Shaders").getChildFile(shaderName + ".glsl");
+
     if (!file.existsAsFile())
     {
-        DBG("Failed to open shader file: " << filepath);
+        DBG("Failed to open shader file: " <<  file.getFullPathName ());
         return {};
     }
 
@@ -311,8 +321,8 @@ bool OpenGLComponent::linkShaderPrograms()
 
 bool OpenGLComponent::linkShaderProgram(unique_ptr<OpenGLShaderProgram>& shaderProgram, const String& shaderName)
 {
-    String vertexShader = readFile(shaderFolder + "vertexShader.glsl"); // always the same vertex Shader;
-    String fragmentShader = readFile(shaderFolder + shaderName + ".glsl");
+    String vertexShader = readShaderFile("vertexShader"); // always the same vertex Shader;
+    String fragmentShader = readShaderFile(shaderName);
 
     // Create an instance of OpenGLShaderProgram
     shaderProgram = make_unique<OpenGLShaderProgram>(openGLContext);

@@ -24,10 +24,7 @@ ZoukedVisualizerAudioProcessor::ZoukedVisualizerAudioProcessor()
                        )
 #endif
 {
-    /* FIFO 
-    fifoBuffer.resize(fifoSize, 0.0f);
-    */
-   bufferSpecsFifoBuffer.resize(6, 0.0f);
+   bufferSpecsFifoBuffer.resize(6, 0.0f); // has to be +1 of the number of wagons in the train
    sampleRate = this->getSampleRate();
    formatManager.registerBasicFormats();
 }
