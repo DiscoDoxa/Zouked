@@ -1,0 +1,10 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\users\\louis\\desktop\\zouked\\new\\juce\\modules\\juce_audio_devices\\midi_io\\juce_scheduledeventthread.h",
+        "ProvidedModule": "",
+        "Includes": [],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}
