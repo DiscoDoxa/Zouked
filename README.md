@@ -1,6 +1,7 @@
 # Zouked Visualizer
 
-OpenGL Visualizer Plug-In to make diggers/dancers zouked. Work in progress - the aim is to have meke it usable as a plug-in to link it with a midi controller, have several shaders to play with and optimized buffer computing for better synchronization.
+OpenGL Visualizer Plug-In to make diggers/dancers zouked. 
+Work in progress - the aim is to make it usable as a plug-in in order to link it with a midi controller, also have several shaders to play with and optimized buffer computing for better synchronization.
 
 ## Demo
 
