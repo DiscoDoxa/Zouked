@@ -1,4 +1,4 @@
-#Zouked Visualizer
+# Zouked Visualizer
 
 OpenGL Visualizer Plug-In to make diggers/dancers zouked.
 
